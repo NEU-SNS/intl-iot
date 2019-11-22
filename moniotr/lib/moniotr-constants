@@ -1,0 +1,150 @@
+# This file contains constants, conventions, and sanity checks used by Mon(ioT)r
+# This file is not supposed to be modified. If you want to redefine constants,
+# Use etc/moniotr.conf instead.
+
+_CURDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+MONIOTR_CONF="$_CURDIR/../etc/moniotr.conf"
+
+if [[ ! -f "$MONIOTR_CONF" ]]; then
+    echo File moniotr.conf not found. Please create and configure it using
+    echo moniotr.conf.example as reference before using this script.
+    exit 1
+fi
+
+source $MONIOTR_CONF
+
+IP_FILE="ip.txt"
+MAC_FILE="mac.txt"
+SPOOF_MAC_FILE="spoof-mac.txt"
+NAME_FILE="name.txt"
+EXCEPTIONS_FILE="mitm-exceptions.txt"
+DNSOVERRIDE_FILE="dns-override.txt"
+IPBLOCK_FILE="ip-block.txt"
+MONITOR_IF_FILE="monitor-if.txt"
+DHCP_INFO_FILE="dhcp-info.txt"
+MITM_TLS_FILE="mitm-tls-policy.txt"
+MITM_TRAFFIC_DIR="$TRAFFIC_DIR/mitm"
+MITMPROXY_SCRIPT="$_CURDIR/mitmproxy-script.py"
+TCPDUMP_ENABLED_FILE="$TRAFFIC_DIR/.tcpdump-enabled"
+LAST_BOOT=`last reboot --time-format iso | head -n 1 | cut -d ' ' -f8`
+TIMESTAMP=`date "+%Y-%m-%d %H:%M:%S"`
+BOGUS_PORT="47676"
+
+source $MONIOTR_CONF
+
+if [[ -z "$SWITCH_MIRRORS" ]]; then
+    SWITCH_MIRRORS=$MONITORED_INTERFACES
+fi
+
+if [[ -z "TAGGED_EXPERIMENTS_GROUP" ]]; then
+    TAGGED_EXPERIMENTS_GROUP="root"
+fi
+
+function check_set()
+{
+    if [ -z "$2" ]; then
+        >&2 echo "Error in moniotr.conf: variable '$1' must be set."
+        exit 1
+    fi
+}
+
+function check_set_n()
+{
+    if [ -z "$3" ]; then
+        return
+    fi
+
+    if [ `wc -w <<< "$3"` != "$1" ]; then
+        >&2 echo "Error in moniotr.conf: variable '$2' must contain $1 values (separated by spaces). One for each monitored network."
+        exit 1
+    fi
+}
+
+function check_dirs()
+{
+    if [ -z "$1" ]; then
+        return
+    fi
+
+    for x in $1; do
+        if [ ! -d "$x" ]; then
+            >&2 echo "Error in moniotr.conf: directory $x does not exist."
+            exit 1
+        fi
+    done
+}
+
+function check_files()
+{
+    if [ -z "$1" ]; then
+        return
+    fi
+
+    for x in $1; do
+        if [ ! -f "$x" ]; then
+            >&2 echo "Error in moniotr.conf: file $x does not exist."
+            exit 1
+        fi
+    done
+}
+
+function check_ifaces()
+{
+    if [ -z "$1" ]; then
+        return
+    fi
+
+    for x in $1; do
+        FOUND=`grep "$x:" /proc/net/dev`
+        if [ -z "$FOUND" ]; then
+            >&2 echo "Error in moniotr.conf: interface $x does not exist."
+            exit 1
+        fi
+    done
+}
+
+
+WIFI_SOURCES_ALL=${WIFI_SOURCES//,/ }
+
+check_set MONIOTR_DIR $MONIOTR_DIR
+check_set MONITORED_INTERFACES $MONITORED_INTERFACES
+check_set TRAFFIC_DIR $TRAFFIC_DIR
+check_set LOG_DIR $LOG_DIR
+check_set TEMP_DIR $TEMP_DIR
+check_set TCPDUMP $TCPDUMP
+check_set MITMPROXY_DEFAULT_TLS_POLICY $MITMPROXY_DEFAULT_TLS_POLICY
+check_set MITMPROXY_MITMDUMP $MITMPROXY_MITMDUMP
+check_set MITMPROXY_LOCAL_PORTS $MITMPROXY_LOCAL_PORTS
+check_set MITMPROXY_INTERCEPT_HTTP_PORTS $MITMPROXY_INTERCEPT_HTTP_PORTS
+check_set MITMPROXY_INTERCEPT_HTTPS_PORTS $MITMPROXY_INTERCEPT_HTTPS_PORTS
+check_set MITMPROXY_CONF_DIR $MITMPROXY_CONF_DIR
+check_set DNS_OVERRIDE $DNS_OVERRIDE
+check_set IP_BLOCK $IP_BLOCK
+
+if [ "$DNS_OVERRIDE" == "true" ]; then
+    check_set NAMED_VIEWS $NAMED_VIEWS
+    check_set NAMED_RPZ_DIR $NAMED_RPZ_DIR
+    check_set NAMED_PORT $NAMED_PORT
+fi
+
+if [ "$IP_BLOCK" == "true" ]; then
+    check_set IP_BLOCK_LISTEN_PORT $IP_BLOCK_LISTEN_PORT
+fi
+
+check_dirs "$MONIOTR_DIR $TRAFFIC_DIR $LOG_DIR $TEMP_DIR $MITMPROXY_CONF_DIR"
+check_files "$TCPDUMP $MITMPROXY_MITMDUMP"
+check_ifaces "$MONITORED_INTERFACES $SWITCH_MIRRORS $WIFI_SOURCES_ALL $COPY_MONITORED_NETWORKS"
+
+NUM_NETWORKS=`wc -w <<< "$MONITORED_INTERFACES"`
+check_set_n $NUM_NETWORKS WAN_GATEWAYS "$WAN_GATEWAYS"
+check_set_n $NUM_NETWORKS NETWORK_NAMES "$NETWORK_NAMES"
+check_set_n $NUM_NETWORKS SWITCH_MIRRORS "$SWITCH_MIRRORS"
+check_set_n $NUM_NETWORKS WIFI_SOURCES "$WIFI_SOURCES"
+check_set_n $NUM_NETWORKS COPY_MONITORED_NETWORKS "$COPY_MONITORED_NETWORKS"
+check_set_n $NUM_NETWORKS MITMPROXY_LOCAL_PORTS "$MITMPROXY_LOCAL_PORTS"
+
+TRAFFIC_GROUP_FOUND=`cat /etc/group | grep $TRAFFIC_GROUP:`
+if [ -z "$TRAFFIC_GROUP_FOUND" ]; then
+    >&2 echo "Error in moniotr.conf: group $TRAFFIC_GROUP does not exist."
+    exit 1
+fi

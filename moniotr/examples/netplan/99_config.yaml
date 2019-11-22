@@ -1,0 +1,82 @@
+network:
+    version: 2
+    renderer: networkd
+    ethernets:
+        eth0:
+            addresses: []
+            dhcp4: true
+            dhcp6: false
+            macaddress: 46:16:20:94:a5:70
+        eth1:
+            addresses: []
+            dhcp4: false
+            dhcp6: false
+        eth-switch:
+            addresses: []
+            dhcp4: false
+            dhcp6: false
+        eth-mirror:
+            addresses: []
+            dhcp4: false
+            dhcp6: false
+        eth-copy:
+            addresses: []
+            dhcp4: false
+            dhcp6: false
+    vlans:
+        switch-vlan10:
+            id: 10
+            link: eth-switch
+        switch-vlan11:
+            id: 11
+            link: eth-switch
+        switch-vlan12:
+            id: 12
+            link: eth-switch
+        mirror-vlan10:
+            id: 10
+            link: eth-mirror
+        mirror-vlan11:
+            id: 11
+            link: eth-mirror
+        mirror-vlan12:
+            id: 12
+            link: eth-mirror
+        copy-vlan10:
+            id: 10
+            link: eth-copy
+        copy-vlan11:
+            id: 11
+            link: eth-copy
+        copy-vlan12:
+            id: 12
+            link: eth-copy
+    bridges:
+        br9:
+            interfaces: [eth1,eth-switch]
+            addresses: [192.168.9.254/24]
+            parameters:
+                forward-delay: 0
+                stp: false
+        br10:
+            interfaces: [switch-vlan10]
+            addresses: [192.168.10.254/24]
+            macaddress: a6:39:e1:79:59:b0
+            parameters:
+                forward-delay: 0
+                stp: false
+                ageing-time: 0
+        br11:
+            interfaces: [switch-vlan11]
+            addresses: [192.168.11.254/24]
+            parameters:
+                forward-delay: 0
+                stp: false
+                ageing-time: 0
+        br12:
+            interfaces: [switch-vlan12]
+            addresses: [192.168.12.254/24]
+            parameters:
+                forward-delay: 0
+                stp: false
+                ageing-time: 0

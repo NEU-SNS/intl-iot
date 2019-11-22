@@ -1,0 +1,8 @@
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="d8:9e:f3:14:9f:47", NAME="eth0"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="00:1b:21:a7:68:c0", NAME="eth1"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="00:1b:21:a7:68:c1", NAME="eth-switch"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="00:1b:21:a7:68:c2", NAME="eth-mirror"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="00:1b:21:a7:68:c3", NAME="eth-copy"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="e0:ca:94:d6:0a:fd", NAME="wlan0"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="c0:d9:62:17:e1:6e", NAME="wlan1"
+SUBSYSTEM=="net", DRIVERS=="?*", ATTR{type}=="1", ACTION=="add", ATTR{address}=="d4:6e:0e:11:77:90", NAME="wlan2"

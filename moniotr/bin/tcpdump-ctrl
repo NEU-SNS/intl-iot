@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# This script manages tcpdump capture. It also affects tagged experiments.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+function usage()
+{
+    echo "Usage: $ME <start|stop|restart||status>"
+}
+
+function help()
+{
+    echo "This script manages the activation status of tcpdump capture of Mon(IoT)r."
+    echo "Modifications done by this script are not persistent across restarts."
+    echo
+    usage
+    echo
+    echo "start         Immediately starts tcpdump capture for all the devices connected."
+    echo
+    echo "stop          Immediately stops tcpdump capture for all the devices connected and "
+    echo "              prevents new devices from being captured until restarted."
+    echo
+    echo "restart       Immediately restarts tcpdump capture for all the devices connected."
+    echo
+    echo "status        Query the current status of tcpdump capture."
+}
+
+function tcpdump-status()
+{
+    if [[ -f "$TCPDUMP_ENABLED_FILE" ]] && [[ `cat $TCPDUMP_ENABLED_FILE` == "$LAST_BOOT"  ]]; then
+        echo "Capture using tcpdump is started."
+        return 1
+   else
+        echo "Capture using tcpdump is not started."
+        return 0
+   fi
+}
+
+function tcpdump-start()
+{
+    tcpdump-status &> /dev/null
+    if [ $? == "1" ]; then
+         echo "Failed: capture using tcpdump is already started"
+         exit 1
+    fi
+
+    echo $LAST_BOOT > $TCPDUMP_ENABLED_FILE
+
+    LEASES=`dhcp-lease-list --parsable 2> /dev/null | awk '{print $2 ";" $4}'`
+    NUM=0
+    for lease in $LEASES; do
+        NUM=$((NUM+1))
+        lease=${lease/;/ }
+        lease_array=($lease)
+        MAC=${lease_array[0]}
+        MAC=`sed 's/0\([0-9A-Fa-f]\)/\1/g;s/.*/\L\0/' <<< $MAC`
+        IP=${lease_array[1]}
+        $CURRENT_DIR/setup-device "$IP" "$MAC" &> /dev/null
+    done
+}
+
+function tcpdump-stop()
+{
+    tcpdump-status &> /dev/null
+    if [ $? == "0" ]; then
+         echo "Failed: capture using tcpdump is already stopped"
+         exit 1
+    fi
+
+    rm -f "$TCPDUMP_ENABLED_FILE"
+    killall tcpdump &> /dev/null
+    echo "Capture using tcpdump stopped."
+}
+
+
+if [ "$1" == "start" ]; then
+    tcpdump-start
+elif [ "$1" == "stop" ]; then
+    tcpdump-stop
+elif [ "$1" == "restart" ]; then
+    tcpdump-stop
+    sleep 1
+    tcpdumo-start
+elif [ "$1" == "status" ]; then
+    tcpdump-status
+    exit $?
+else
+    help
+fi

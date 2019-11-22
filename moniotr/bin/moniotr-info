@@ -1,0 +1,199 @@
+#!/bin/bash
+
+# This script gets info of all devices of Mon(IoT)r.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+function usage()
+{
+    echo "Usage: $ME [<all|online|offline|help>]"
+    echo "       $ME device <ID>"
+}
+
+function help()
+{
+    echo "This script show information about the monitored devices of Mon(IoT)r."
+    usage
+    echo
+    echo "all           Show info about all the online and offline devices."
+    echo
+    echo "online        Show info about all the online devices (default)."
+    echo
+    echo "offline       Show info about all the offline devices."
+    echo
+    echo "help          Show this help."
+    echo
+    echo "device ID     Show info about the device with the specified ID."
+    echo "              A valid ID is a MAC Address, an IP Address, or the name fo the device."
+    echo
+    echo "Examples:  $ME device 11:22:33:44:55:66"
+    echo "           $ME all"
+}
+
+function info_mac()
+{
+    MAC="$1"
+    MAC_ALT=`echo $MAC | sed 's/\b\(\w\)\b/0\1/g'`
+    IP="-"
+    NAME="-"
+    LAST_SEEN="-"
+    MONITOR_IF="-"
+    WIFI="-"
+    NETWORK_NAME="-"
+    STATUS="offline"
+    TLS_POLICY="default"
+    NUM_MITM_EXCEPTIONS="0"
+    DEVICE_DIR="$TRAFFIC_DIR/by-mac/$MAC"
+    DHCP_INFO="-"
+
+    if [ -f "$DEVICE_DIR/$MAC_FILE" ]; then
+        LAST_SEEN=`date -r $DEVICE_DIR/$MAC_FILE "+%Y-%m-%d %H:%M:%S"`
+    fi
+
+    if [ -f "$DEVICE_DIR/$IP_FILE" ]; then
+        IP=`cat $DEVICE_DIR/$IP_FILE`
+    fi
+
+    if [ -f "$DEVICE_DIR/$DHCP_INFO_FILE" ]; then
+        DHCP_INFO=`cat $DEVICE_DIR/$DHCP_INFO_FILE`
+    fi
+
+    if [ -f "$DEVICE_DIR/$NAME_FILE" ]; then
+        NAME=`cat $DEVICE_DIR/$NAME_FILE`
+    elif [ -f $DEVICES_FILE ]; then
+        NAME=`cat $DEVICES_FILE | grep "$MAC" | cut -d " " -f 2`
+    fi
+
+    if [[ -z NAME ]]; then
+       NAME="-"
+    fi
+
+    if [ -f "$DEVICE_DIR/$NAME_FILE" ]; then
+        NAME=`cat $DEVICE_DIR/$NAME_FILE`
+    fi
+
+    if [ -z $NAME ]; then
+        NAME="-"
+    fi
+
+    if [ -f "$DEVICE_DIR/$MITM_TLS_FILE" ]; then
+        TLS_POLICY=`cat $DEVICE_DIR/$MITM_TLS_FILE`
+    fi
+
+    if [ "$TLS_POLICY" == "default" ]; then
+        TLS_POLICY="$TLS_POLICY ($MITMPROXY_DEFAULT_TLS_POLICY)"
+    fi
+
+    if [ -f "$DEVICE_DIR/$EXCEPTIONS_FILE" ]; then
+        NUM_MITM_EXCEPTIONS=`cat $DEVICE_DIR/$EXCEPTIONS_FILE | wc -l`
+    fi
+
+    if [ -f "$DEVICE_DIR/$MONITOR_IF_FILE" ]; then
+        MONITOR_IF=`cat $DEVICE_DIR/$MONITOR_IF_FILE`
+        read -r -a network_mirrors <<< $SWITCH_MIRRORS
+        read -r -a network_names <<< $NETWORK_NAMES
+        for index in "${!network_names[@]}" ; do
+            if [ "${network_mirrors[index]}" == "$MONITOR_IF" ]; then
+                NETWORK_NAME="${network_names[index]}"
+            fi
+        done
+    fi
+
+    if [[ "$LEASES" =~ .*"MAC $MAC_ALT IP $IP ".* ]]; then
+        LAST_SEEN="ONLINE"
+    fi
+
+    if [[ "$WIFI_INFO" =~ .*Station[[:space:]]$MAC_ALT[[:space:]]\(on[[:space:]](.*)\).* ]]; then
+        WIFI=${BASH_REMATCH[1]}
+        WIFI=${WIFI//[[:space:]]/_}
+        WIFI=${WIFI/)/ }
+        if [[ $WIFI =~ (.*)[[:space:]].* ]]; then
+            WIFI=${BASH_REMATCH[1]}
+        fi
+    fi
+
+    printf '%-17s\t%-20s\t%-15s\t%-9s\t%-9s\t%-19s\t%-3s\t%-28s\t%s\n' "$MAC" "$NAME" "$IP" "$WIFI" "$NETWORK_NAME" "$LAST_SEEN" "$NUM_MITM_EXCEPTIONS" "$TLS_POLICY" "$DHCP_INFO"
+}
+
+COMMAND=$1
+PARAM=$2
+
+if [ -z "$COMMAND" ]; then
+    COMMAND="online";
+fi
+
+if [[ "$COMMAND" != "device" ]] && [[ "$COMMAND" != "all" ]] && [[ "$COMMAND" != "online" ]] && [[ "$COMMAND" != "offline" ]]; then
+    help
+    exit
+fi
+
+if [[ "$COMMAND" == "device" ]] && [[ -z "$PARAM" ]]; then
+    echo "Error: not enough parameters"
+    usage
+    exit
+fi
+
+MACS=""
+LEASES=`dhcp-lease-list --parsable 2> /dev/null`
+
+if [ "$COMMAND" == "device" ]; then
+    IDS="$PARAM"
+    IDS=${IDS//,/ }
+    for ID in $IDS; do
+        if [ ! -f "$TRAFFIC_DIR/by-all/$ID/$MAC_FILE" ]; then
+            echo "Error: device '$ID' not found"
+            exit
+        else
+            MAC=`cat $TRAFFIC_DIR/by-all/$ID/$MAC_FILE`
+            if [ ! -z "$MACS" ]; then
+                MACS="$MACS $MAC"
+            else
+                MACS="$MAC"
+            fi
+        fi
+    done
+else
+    cd $TRAFFIC_DIR/by-mac
+    for ID in *:*:*:*:*:*/; do
+        ID=${ID//\//}
+        ID_ALT=`echo $ID | sed 's/\b\(\w\)\b/0\1/g'`
+        ONLINE="false"
+
+        if [ -f "$TRAFFIC_DIR/by-mac/$ID/$IP_FILE" ]; then
+            IP=`cat $TRAFFIC_DIR/by-mac/$ID/$IP_FILE`
+            if [[ "$LEASES" =~ .*"MAC $ID_ALT IP $IP ".* ]]; then
+                ONLINE="true"
+            fi
+        fi
+
+        if ( [[ "$COMMAND" == "online" ]] && [[ "$ONLINE" == "false" ]] ) || \
+           ( [[ "$COMMAND" == "offline" ]] && [[ "$ONLINE" == "true" ]] ); then
+            continue;
+        fi
+
+        if [ ! -z "$MACS" ]; then
+            MACS="$MACS $ID"
+        else
+            MACS="$ID"
+        fi
+    done
+    cd - &> /dev/null
+fi
+
+if [ -z "$MACS" ]; then
+    echo "No results to show."
+    exit
+fi
+
+WIFIS=`iw dev | awk '$1=="Interface"{print $2}'`
+WIFI_INFO=""
+
+for wifi in $WIFIS; do
+    WIFI_INFO=`iw dev $wifi station dump | grep Station`" $WIFI_INFO"
+done
+
+printf '%-17s\t%-20s\t%-15s\t%-9s\t%-9s\t%-19s\t%-3s\t%-28s\t%s\n' "MAC Address" "NAME" "IP" "WI-FI" "NETWORK" "LAST SEEN" "#MITM" "TLS POLICY" "DHCP INFO"
+for MAC in $MACS; do
+    info_mac $MAC
+done

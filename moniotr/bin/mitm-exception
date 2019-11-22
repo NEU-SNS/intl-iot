@@ -1,0 +1,279 @@
+#!/bin/bash
+
+# This script manages MITM exceptions for a given device.
+# Changes made by this script are persistent across restarts.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+COMMAND="$1"
+ID="$2"
+PARAM="$3"
+DEST="$TRAFFIC_DIR/by-all/$ID"
+MAC_FILE=$DEST/$MAC_FILE
+EXCEPTIONS_FILE=$DEST/$EXCEPTIONS_FILE
+MITM_TLS_FILE="$DEST/$MITM_TLS_FILE"
+ME=$(basename $0)
+
+function usage()
+{
+    echo "Usage: $ME <add|del> <ID> <EXCEPTION>"
+    echo "       $ME <sync|wipe> <ID>"
+    echo "       $ME policy <ID> [<off/default/manual-exceptions/auto-exceptions/ignore-exceptions>]"
+    echo "       $ME <import|export> <FILE>"
+}
+
+function help()
+{
+    echo "This script manages mitm exceptions for TLS traffic on a per-device basis."
+    echo "Changes made using this script are applied immediately and are persistent"
+    echo "across restarts."
+    echo
+    usage
+    echo
+    echo "add           Add a new exception for a specific device."
+    echo
+    echo "del           Remove an existing exception for a specific device."
+    echo
+    echo "sync          Synchronized exceptions for a specific device. This is needed the first time the"
+    echo "              device connects or in case of manual changes to the device configuration or to the"
+    echo "              firewall rules."
+    echo
+    echo "wipe          Remove all existing exceptions for a specific device."
+    echo
+    echo "policy        View or set a MITM exception TLS policy for a specific device. Valid policies are:"
+    echo "              off                Disable TLS interception for the device."
+    echo "              default            Use default policy settings from moniotr.conf."
+    echo "              manual-exceptions  Activate interception and manage exceptions manually."
+    echo "              auto-exceptions    Activate interception and manage exceptions automatically:"
+    echo "                                 every time a TLS interception fails, an exception is added automatically."
+    echo "              ignore-exceptions  Activates TLS interception and ignore exceptions."
+    echo "                                 When this policy is enabled, TLS interception happens no matter what."
+    echo "                                 Exceptions can be manually modified, but they will be ignored."
+    echo
+    echo "              If a TLS policy is not specified, show the current policy for the device."
+    echo
+    echo "import        Import a list of exceptions from a specified file. Existing exceptions are preserved."
+    echo
+    echo "export        Exports a list of exceptions to the specified file."
+    echo
+    echo "ID            Device identifier. It can be either a MAC Address, an IP Address, or the"
+    echo "              name of the device."
+    echo
+    echo "EXCEPTION     Exception to be added or removed. For example a hostname or an"
+    echo "              IP address."
+    echo
+    echo "Examples: $ME add 11:22:33:44:55:66 google.com"
+    echo "          $ME sync 123.124.125.126"
+    echo "          $ME export 1.2.3.4 newfile"
+    exit
+}
+
+function readpolicy()
+{
+    if [ -f "$MITM_TLS_FILE" ]; then
+        MITM_TLS_POLICY=`cat $MITM_TLS_FILE`
+        MITM_TLS_POLICY_DEFAULT="false"
+    fi
+    if [[ "$MITM_TLS_POLICY" != "off" ]] && [[ "$MITM_TLS_POLICY" != "manual-exceptions" ]] && \
+       [[ "$MITM_TLS_POLICY" != "auto-exceptions" ]] && [[ "$MITM_TLS_POLICY" != "ignore-exceptions" ]]; then
+        MITM_TLS_POLICY="$MITMPROXY_DEFAULT_TLS_POLICY"
+        MITM_TLS_POLICY_DEFAULT="true"
+    fi
+}
+
+function add-mitm-exception()
+{
+    readpolicy
+    MAC=`cat $MAC_FILE`
+    echo "Adding to $1 a new exception for $2."
+    echo "$2" >> $EXCEPTIONS_FILE
+    sort -u $EXCEPTIONS_FILE -o $EXCEPTIONS_FILE
+    HTTPS_PORTS="${MITMPROXY_INTERCEPT_HTTPS_PORTS// /,}"
+    iptables -t nat -D $MAC -d "$2" -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT &> /dev/null
+    iptables -t nat -A $MAC -d "$2" -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT
+}
+
+function del-mitm-exception()
+{
+    if [ ! -f "$EXCEPTIONS_FILE" ] ; then
+        echo "Destination $1 does not have a valid $EXCEPTIONS_FILE file. Aborting."
+        exit 1
+    fi
+    MAC=`cat $MAC_FILE`
+    echo "Removing from $1 an exception for $2."
+    sed -i "/^$2$/d" $EXCEPTIONS_FILE
+    HTTPS_PORTS="${MITMPROXY_INTERCEPT_HTTPS_PORTS// /,}"
+    iptables -t nat -D $MAC -d "$2" -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT &> /dev/null
+}
+
+function sync-mitm-exceptions()
+{
+    readpolicy
+    MAC=`cat $MAC_FILE`
+    HTTPS_PORTS="${MITMPROXY_INTERCEPT_HTTPS_PORTS// /,}"
+    iptables -t nat -N $MAC &> /dev/null
+    COUNT_PREROUTING=`iptables -t nat -L PREROUTING --line-numbers | sed '/^num\|^$\|^Chain/d' | wc -l`
+    iptables -t nat -C PREROUTING -m mac --mac-source $MAC -j $MAC &> /dev/null || iptables -t nat -I PREROUTING $COUNT_PREROUTING -m mac --mac-source $MAC -j $MAC
+
+    # Removing existing rules
+     iptables -t nat -F $MAC
+
+    if [ -f "$MITM_TLS_FILE" ]; then
+        MITM_TLS_POLICY=`cat $MITM_TLS_FILE`
+    fi
+
+    while read in; do
+        iptables -t nat -A $MAC -d $in -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT &> /dev/null
+    done < "$EXCEPTIONS_FILE"
+
+    if [ "$MITM_TLS_POLICY" == "off" ]; then
+        iptables -t nat -I $MAC -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT
+    elif [ "$MITM_TLS_POLICY" == "ignore-exceptions" ]; then
+        iptables -t nat -I $MAC -j RETURN
+    fi
+}
+
+function tlspolicy()
+{
+    readpolicy
+    POLICY="$2"
+
+    if [[ -z "$POLICY" ]]; then
+       if [ "$MITM_TLS_POLICY_DEFAULT" == "true" ]; then
+           POLICY="default ($MITM_TLS_POLICY)"
+       else
+           POLICY="$MITM_TLS_POLICY"
+       fi
+       echo "TLS interception policy for $1 is $POLICY"
+       exit 0
+    fi
+
+    HTTPS_PORTS="${MITMPROXY_INTERCEPT_HTTPS_PORTS// /,}"
+
+    if [[ "$POLICY" != "off" ]] && [[ "$POLICY" != "default" ]] && [[ "$POLICY" != "manual-exceptions" ]] && \
+      [[ "$POLICY" != "auto-exceptions" ]] && [[ "$POLICY" != "ignore-exceptions" ]]; then
+           echo "Policy '$POLICY' is not valid."
+           usage
+           exit 1
+    fi
+
+    echo "Policy for $1 is now $POLICY"
+    echo $POLICY > $MITM_TLS_FILE
+    MAC=`cat $MAC_FILE`
+    iptables -t nat -D $MAC -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT &> /dev/null
+    iptables -t nat -D $MAC -j RETURN &> /dev/null
+
+    if [ "$MITM_TLS_POLICY" == "off" ]; then
+        iptables -t nat -I $MAC -p tcp -m tcp -m multiport --dports $HTTPS_PORTS -j ACCEPT
+    elif [ "$MITM_TLS_POLICY" == "ignore-exceptions" ]; then
+        iptables -t nat -I $MAC -j RETURN
+    fi
+}
+
+
+function wipe-mitm-exceptions()
+{
+    MAC=`cat $MAC_FILE`
+    echo Permanenting removing mitm exceptions associated with $1...
+    mv "$EXCEPTIONS_FILE" "$EXCEPTIONS_FILE.old"
+    touch "$EXCEPTIONS_FILE"
+    sync-mitm-exceptions $1
+}
+
+function mitm-import()
+{
+    if [ ! -f "$EXCEPTIONS_FILE" ] ; then
+        echo "Destination $1 does not have a valid exceptions file. Aborting."
+        exit 1
+    fi
+
+    if [ ! -f "$2" ] ; then
+        echo "File $2 does not exist. Aborting."
+        exit 1
+    fi
+
+    echo "Importing exceptions from $2"
+    cat "$2" >> "$EXCEPTIONS_FILE"
+    sort -u $EXCEPTIONS_FILE -o $EXCEPTIONS_FILE
+    sync-mitm-exceptions $1
+}
+
+function mitm-export()
+{
+    if [ ! -f "$EXCEPTIONS_FILE" ] ; then
+        echo "Destination $1 does not have a valid exceptions file. Aborting."
+        exit 1
+    fi
+
+    if [ -f "$2" ] ; then
+        echo "File $2 already exists. Aborting."
+        exit 1
+    fi
+
+    echo "Exporting exceptions to $2"
+    cp "$EXCEPTIONS_FILE" "$2"
+}
+
+if [[ -z "$COMMAND" ]] || [[ "$COMMAND" != "add" ]] && [[ "$COMMAND" != "del" ]] && [[ "$COMMAND" != "sync" ]] && [[ "$COMMAND" != "policy" ]] && \
+   [[ "$COMMAND" != "wipe" ]] && [[ "$COMMAND" != "import" ]] && [[ "$COMMAND" != "export" ]] && [[ "$COMMAND" != "addauto" ]]; then
+    help
+    exit
+fi
+
+if [[ -z "$ID" ]]; then
+    echo Destination not specified.
+    usage
+    exit 1
+fi
+
+if [[ -z "$PARAM" ]] && ( [[ "$COMMAND" == "del" ]] || [[ "$COMMAND" == "add" ]] || [[ "$COMMAND" == "addauto" ]]); then
+    echo Exception not specified.
+    usage
+    exit 1
+fi
+
+if [[ -z "$PARAM" ]] && ( [[ "$COMMAND" == "import" ]] || [[ "$COMMAND" == "export" ]] ); then
+    echo File not specified.
+    usage
+    exit 1
+fi
+
+if [ ! -f "$MAC_FILE" ] ; then
+    echo "Destination $ID does not exist or is not properly configured. Aborting."
+    exit 1
+fi
+
+
+if [[ "$COMMAND" == "add" ]]; then
+    add-mitm-exception $ID $PARAM
+elif [[ "$COMMAND" == "del" ]]; then
+    del-mitm-exception $ID $PARAM
+elif [[ "$COMMAND" == "sync" ]]; then
+    echo Syncing mitm policy and exceptions associated with $ID...
+    sync-mitm-exceptions $ID
+elif [[ "$COMMAND" == "wipe" ]]; then
+    wipe-mitm-exceptions $ID
+elif [[ "$COMMAND" == "policy" ]]; then
+    tlspolicy $ID $PARAM
+elif [[ "$COMMAND" == "import" ]]; then
+    mitm-import $ID $PARAM
+elif [[ "$COMMAND" == "export" ]]; then
+    mitm-export $ID $PARAM
+elif [[ "$COMMAND" == "addauto" ]]; then
+
+    policy=$MITMPROXY_DEFAULT_TLS_POLICY
+
+    if [ -f "$MITM_TLS_FILE" ]; then
+        policy=`cat $MITM_TLS_FILE`
+
+        if [ "$policy" == "default" ]; then
+            policy=$MITMPROXY_DEFAULT_TLS_POLICY
+        fi
+    fi
+
+    if [ "$policy" == "auto-exceptions" ]; then
+        add-mitm-exception $ID $PARAM
+    fi
+
+fi

@@ -1,0 +1,332 @@
+#!/bin/bash
+
+# This script manages the interface mirroring service.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+function usage()
+{
+    echo "Usage: $ME <start|stop|restart|status>"
+}
+
+function help()
+{
+    echo "This script configures the network interfaces for Mon(IoT)r. In particular:"
+    echo "1) Sets up the WAN gateway and NAT for each monitored network."
+    echo "2) Sets up the Wi-Fi sources, if configured on moniotr.conf"
+    echo "3) Copies traffic to external interfaces, if configured on moniotr.conf" 
+    echo "Modifications done by this script are not persistent across restarts."
+    echo
+    usage
+    echo
+    echo "start         Configure the network interfaces for Mon(IoT)r."
+    echo
+    echo "stop          Remove the configuration of network interfaces for Mon(IoT)r."
+    echo
+    echo "restart       Re-configure the network interfaces for Mon(IoT)r."
+    echo
+    echo "status        Query the current status of network interfaces configuration."
+}
+
+function networking-status
+{
+    # We assume we are the only one modifying the interfaces with tc. Other modifications
+    # May break the functionality of this.
+
+    if [ `iptables -S | grep MONIOTR | wc -l` == "0" ]; then
+#    if [ `tc qdisc show | grep 'ingress\|prio' | wc -l` == "0" ]; then
+        echo "Networking is not configured"
+        return 0
+   else
+        echo "Networking is configured"
+        return 1
+   fi
+}
+
+function stopIPBlockListenPort()
+{
+    # Kill any bogus netcat active
+    pkill -9 -f "nc -l $IP_BLOCK_LISTEN_PORT"
+}
+
+function startIPBlockListenPort()
+{
+    stopIPBlockListenPort
+    # Start bogus netcat
+    ( netcat -l $IP_BLOCK_LISTEN_PORT &> /dev/null ) &
+    disown
+}
+
+function setupWAN()
+{
+    DEFAULT_GW=`ip route | grep default | cut -d ' ' -f 3`
+    DEFAULT_IF=`ip route | grep default | cut -d ' ' -f 5`
+
+    read -r -a wan_gateways <<< $WAN_GATEWAYS
+    read -r -a monitored_interfaces <<< $MONITORED_INTERFACES
+
+    # setup DNS override chains, if DNS override is enabled
+    if [ "$DNS_OVERRIDE" == "true" ]; then
+        iptables -t nat -N DNSOVERRIDE &> /dev/null
+        iptables -t nat -F DNSOVERRIDE
+        iptables -t nat -D PREROUTING -j DNSOVERRIDE &> /dev/null
+        iptables -t nat -I PREROUTING -j DNSOVERRIDE
+    fi
+
+    iptables -t nat -N MONIOTR &> /dev/null
+    iptables -t nat -D POSTROUTING -j MONIOTR &> /dev/null
+    iptables -t nat -I POSTROUTING -j MONIOTR
+    iptables -t nat -F MONIOTR
+    iptables -N MONIOTR &> /dev/null
+    iptables -D FORWARD -j MONIOTR &> /dev/null
+    iptables -I FORWARD -j MONIOTR
+    iptables -F MONIOTR
+
+    # Setup IP block
+    if [ "$IP_BLOCK" == "true" ]; then
+        iptables -t nat -N IPBLOCK &> /dev/null
+        iptables -N IPBLOCK &> /dev/null
+        iptables -t nat -F IPBLOCK
+        iptables -F IPBLOCK
+        iptables -t nat -D PREROUTING -j IPBLOCK &> /dev/null
+        iptables -D FORWARD -j IPBLOCK &> /dev/null
+        iptables -t nat -I PREROUTING -j IPBLOCK
+        iptables -I FORWARD -j IPBLOCK
+    fi
+
+    RT_TABLE=100
+
+    for index in "${!monitored_interfaces[@]}" ; do
+        monitored_if=${monitored_interfaces[index]}
+        wan_gw=${wan_gateways[index]}
+
+        if [[ -z "$wan_gw" ]] || [[ "$wan_gw" == "default" ]] || [[ "$wan_gw" == "$DEFAULT_GW" ]]; then
+            wan_gw=$DEFAULT_GW
+            wan_if=$DEFAULT_IF
+        else
+            IP_ROUTE=`ip route get $wan_gw | head -n 1`
+            read -r -a ip_route <<< $IP_ROUTE
+
+            if [ "${ip_route[0]}" == "local" ]; then
+                echo "Gateway $wan_gw not valid because it is local. Switching to default."
+                wan_gw=$DEFAULT_GW
+                wan_if=$DEFAULT_IF
+            elif [ "${ip_route[1]}" == "dev" ]; then
+                wan_if=${ip_route[2]}
+            elif [ "${ip_route[3]}" == "dev" ]; then
+                wan_if=${ip_route[4]}
+            else
+                echo "Gateway $wan_gw not recognized. Switching to default."
+                wan_gw=$DEFAULT_GW
+                wan_if=$DEFAULT_IF
+            fi
+        fi
+
+        echo Setting $monitored_if default gateway to $wan_gw/$wan_if.
+
+        iptables -t nat -D MONIOTR -o $wan_if -j MASQUERADE &> /dev/null
+        iptables -t nat -A MONIOTR -o $wan_if -j MASQUERADE
+        iptables -I MONIOTR -i $monitored_if -o $wan_if -j ACCEPT
+        iptables -I MONIOTR -i $wan_if -o $monitored_if -j ACCEPT
+        iptables -A MONIOTR -i $monitored_if -j DROP
+        iptables -A MONIOTR -o $monitored_if -j DROP
+
+        ip rule delete from 0/0 to 0/0 table $RT_TABLE &> /dev/null
+        ip rule add iif $monitored_if table $RT_TABLE &> /dev/null
+        ip route flush table $RT_TABLE
+
+        wan_ptp=`ifconfig $wan_if | grep POINTOPOINT | wc -l`
+
+        if [ "$wan_ptp" == "0" ]; then
+            ip route add default via $wan_gw dev $wan_if table $RT_TABLE
+        else
+            ip route add default dev $wan_if table $RT_TABLE
+        fi
+
+        RT_TABLE=$((RT_TABLE+1))
+
+        # Setup DNS override redirections, for each network, if enabled
+        if [ "$DNS_OVERRIDE" == "true" ]; then
+            network_ip=`ip -o addr show $monitored_if | grep -v inet6 | cut -d ' ' -f7`
+            interface_ip=`ip addr show $monitored_if | grep "inet\b" | awk '{print $2}' | cut -d/ -f1`
+            echo Configuring DNS override for devices in $network_ip to $interface_ip
+            iptables -t nat -A DNSOVERRIDE -s $network_ip -p udp -m udp --dport 53 -j DNAT --to-destination $interface_ip:$NAMED_PORT
+        fi
+
+    done
+}
+
+function teardownWAN()
+{
+     echo Removing WAN firewall and gateway rules...
+     iptables -t nat -D POSTROUTING -j MONIOTR &> /dev/null
+     iptables -D FORWARD -j MONIOTR &> /dev/null
+     iptables -t nat -F MONIOTR &> /dev/null
+     iptables -F MONIOTR &> /dev/null
+     iptables -t nat -X MONIOTR &> /dev/null
+     iptables -X MONIOTR &> /dev/null
+
+     for network in $MONITORED_NETWORKS; do
+         ip route flush table $RT_TABLE &> /dev/null
+         RT_TABLE=$((RT_TABLE+1))
+     done
+
+     iptables -t nat -F DNSOVERRIDE &> /dev/null
+     iptables -t nat -D PREROUTING -j DNSOVERRIDE &> /dev/null
+     iptables -t nat -X DNSOVERRIDE &> /dev/null
+     iptables -t nat -F IPBLOCK &> /dev/null
+     iptables -t nat -D PREROUTING -j IPBLOCK &> /dev/null
+     iptables -t nat -X IPBLOCK &> /dev/null
+     iptables -D FORWARD -j IPBLOCK &> /dev/null
+     iptables -F IPBLOCK &> /dev/null
+     iptables -X IPBLOCK &> /dev/null
+}
+
+function addwifisource()
+{
+        input_if="$1"
+        output_if="$2"
+        echo "Wi-Fi source mirroring $input_if to $output_if"
+        tc qdisc del dev $input_if root &> /dev/null
+        tc qdisc add dev $input_if handle 1: root prio
+        tc filter add dev $input_if parent 1: prio 1 protocol all handle 1 fw action pass
+        tc filter add dev $input_if parent 1: prio 2 protocol all u32 match u8 0 0 action mirred egress mirror dev $output_if
+}
+
+function addmirror()
+{
+        input_if=$1
+        output_if=$2
+        echo Mirroring all $input_if traffic to $output_if
+        # ingress
+        tc qdisc del dev $input_if ingress &> /dev/null
+        tc qdisc add dev $input_if ingress
+        tc filter add dev $input_if parent ffff: protocol all u32 match u8 0 0 action mirred egress mirror dev $output_if
+
+        # egress
+        tc qdisc del dev $input_if root &> /dev/null
+        tc qdisc add dev $input_if handle 1: root prio
+        tc filter add dev $input_if parent 1: protocol all u32 match u8 0 0 action mirred egress mirror dev $output_if
+}
+
+function delmirror()
+{
+        mirror_if=$1
+        echo Removing mirroring of $mirror_if
+        tc qdisc del dev $mirror_if root &> /dev/null
+        tc qdisc del dev $mirror_if ingress &> /dev/null
+}
+
+function networking-start()
+{
+
+    networking-status &> /dev/null
+    if [ $? == "1" ]; then
+         echo "Failed: networking configuration of Mon(IoT)r is already started"
+         exit 1
+    fi
+
+    setupWAN
+
+    ebtables -D OUTPUT -j mark --set-mark 1 --mark-target ACCEPT &> /dev/null
+
+    if [[ ! -z "$WIFI_SOURCES" ]]; then
+
+#        echo Configuring source mirrors...
+        ebtables -I OUTPUT -j mark --set-mark 1 --mark-target ACCEPT
+
+        read -r -a wifi_sources <<< $WIFI_SOURCES
+        read -r -a network_mirrors <<< $SWITCH_MIRRORS
+
+        for index in "${!network_mirrors[@]}" ; do
+            NETWORK_MIRROR=${network_mirrors[index]}
+            MIRROR_SOURCES=${wifi_sources[index]}
+
+            if [ MIRROR_SOURCES == "none" ]; then
+                continue;
+            fi
+
+            MIRROR_SOURCES=${MIRROR_SOURCES//,/ }
+            read -r -a mirror_sources <<< $MIRROR_SOURCES
+            for index2 in "${!mirror_sources[@]}" ; do
+                MIRROR_SOURCE=${mirror_sources[index2]}
+                addwifisource $MIRROR_SOURCE $NETWORK_MIRROR
+                addmirror $MIRROR_SOURCE $NETWORK_MIRROR
+            done
+        done
+    fi
+
+    if [[ ! -z "$COPY_MONITORED_NETWORKS" ]]; then
+        read -r -a network_mirrors <<< $SWITCH_MIRRORS
+        read -r -a COPY_MONITORED_NETWORKS <<< $COPY_MONITORED_NETWORKS
+
+        for index in "${!network_mirrors[@]}" ; do
+            NETWORK_MIRROR=${network_mirrors[index]}
+            NETWORK_REMIRROR=${COPY_MONITORED_NETWORKS[index]}
+            addmirror $NETWORK_MIRROR $NETWORK_REMIRROR
+        done
+    fi
+
+    if [[ "$BRIDGES_AGEING_ZERO" == "true" ]]; then
+        BRIDGES=`find "/sys/devices/virtual/net/" | grep 'brif$' | awk -F / '{print $6}'`
+        for bridge in BRIDGES; do
+            for monitored_if in $MONITORED_INTERFACES; do
+                if [ "monitored_if" == "$bridge" ]; then
+                    echo "Setting ageing zero to monitored bridge: $bridge"
+                    brctl setageing $bridge 0
+                fi
+            done
+        done
+    fi
+
+    if [ "$IP_BLOCK" == "true" ]; then
+        startIPBlockListenPort
+    fi
+
+}
+
+function networking-stop
+{
+
+    networking-status &> /dev/null
+    if [ "$?" == "0" ]; then
+         echo "Failed: networking configuration of Mon(IoT)r is already stopped"
+         exit 1
+    fi
+
+    teardownWAN
+
+    ebtables -D OUTPUT -j mark --set-mark 1 --mark-target ACCEPT &> /dev/null
+
+    if [[ ! -z "$WIFI_SOURCES" ]]; then
+        MIRROR_SOURCES=${WIFI_SOURCES//,/ }
+
+        for mirror_source in $MIRROR_SOURCES; do
+            delmirror $mirror_source
+        done
+    fi
+
+    if [[ ! -z "$COPY_MONITORED_NETWORKS" ]]; then
+        for mirror in $SWITCH_MIRRORS; do
+            delmirror $mirror
+        done
+    fi
+
+    stopIPBlockListenPort
+}
+
+if [ "$1" == "start" ]; then
+    networking-start
+elif [ "$1" == "stop" ]; then
+    networking-stop
+elif [ "$1" == "restart" ]; then
+    networking-stop
+    sleep 1
+    networking-start
+elif [ "$1" == "status" ]; then
+    networking-status
+    exit $?
+else
+    help
+fi

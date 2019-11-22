@@ -1,0 +1,450 @@
+#!/bin/bash
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source "$CURRENT_DIR"/../lib/moniotr-constants
+
+TRAFFIC_DIR_BY_ALL="$TRAFFIC_DIR/by-all"
+TEMP_TAG_DIR="$TEMP_DIR/tagged"
+TAG_DIR="$TRAFFIC_DIR/tagged"
+ME=$(basename $0)
+NOW=`date '+%Y-%m-%d_%H:%M:%S'`
+COMMAND="$1"
+PARAM1="$2"
+PARAM2="$3"
+PARAM3="$4"
+
+function usage()
+{
+    echo "Usage: $ME <COMMAND> [<PARAMETERS>]"
+    echo "Usage: $ME list"
+    echo "Usage: $ME <start|stop|cancel> <ID> <TAG> [<DEST_DIR>]"
+    echo "Usage: $ME start-with-companion <ID> <COMP_ID>[,<COMP_ID,...] <TAG>"
+}
+
+function help()
+{
+    echo "This script tags the traffic exchanged by the specified network device."
+    echo "To tag some traffic simply use the \"start\" or \"start-with-companion\" command to start tagging"
+    echo "the traffic of the device. After the experiment is complete you can \"stop\" tagging the traffic"
+    echo "and all the traffic exchanged by the device between start and stop will be saved in the DEST_DIR directory."
+    echo
+    usage
+    echo
+    echo "COMMAND   Command can be: list, start, start-with-companion, stop, cancel, help"
+    echo "          list - lists ongoing tagged experiments"
+    echo "          start - starts tagging an experiment"
+    echo "          start-with-companion - starts tagging an experiment with one or more companion devices"
+    echo "          stop - stops tagging an experiment"
+    echo "          cancel - cancel tagged experiment and deletes its data"
+    echo "          help - shows this help"
+    echo
+    echo "ID        Device identifier. It can be either a MAC Address, an IP Address, or the"
+    echo "          name of the device."
+    echo
+    echo "COMP_ID   Companion device identifier. It can be either a MAC Address, an IP Address, or the"
+    echo "          name of the device. Multiple companion identifiers may be specified, separated by a comma."
+    echo
+    echo "TAG       Mandatory tag word for the experiment. It can be a single word containing letters, numbers, and \"_\"."
+    echo
+    echo "DEST_DIR  This is the destination directory of the experiment data. Default: $TAG_DIR"
+    echo
+    echo "Examples: $ME start device-name idle-traffic"
+    echo "          $ME start-with-companion 11:22:33:44:55:66 22:33:44:55:66:77,192.168.10.123 idle-traffic"
+    echo "          $ME list"
+    echo "          $ME stop 11:22:33:44:55:66 idle-traffic ./"
+}
+
+function check_permissions
+{
+    if id -nG | grep -vqw $TAGGED_EXPERIMENTS_GROUP; then 
+        if [ `id -u` != "0" ]; then
+            echo "Permission denied. You must be in the '$TAGGED_EXPERIMENTS_GROUP' group to use this program."
+            exit 1
+        fi
+    fi
+
+    if [ ! -w "$TEMP_TAG_DIR" ] ; then
+        echo "Permission denied. Directory '$TEMP_TAG_DIR' is not writable by the '$TAGGED_EXPERIMENTS_GROUP' group."
+        exit 1
+    fi
+
+    if [ ! -d "$TAG_DIR" ] ; then
+        echo "Permission denied. Directory '$TAG_DIR' is not valid."
+        exit 1
+    fi
+
+    if [ ! -w "$TAG_DIR" ] ; then
+        echo "Permission denied. Directory '$TAG_DIR' is not writable by the '$TAGGED_EXPERIMENTS_GROUP' group."
+        exit 1
+    fi
+
+    if [[ ! -f "$TCPDUMP_ENABLED_FILE" ]] || [[ `cat $TCPDUMP_ENABLED_FILE` != $LAST_BOOT ]]; then
+	echo "Permission denied. Tcpdump traffic capture is not active."
+        exit 1
+    fi
+}
+
+function cmd_list
+{
+    ENTRIES=0
+    for ENTRY in $TEMP_TAG_DIR/* ; do
+        if [[ "$ENTRY" =~ .*/exp\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+            ENTRIES=$((ENTRIES + 1))
+            EXP_NAME=${BASH_REMATCH[1]}
+            EXP_IP="unknown"
+            EXP_MAC="unknown"
+            if [ -f "$TRAFFIC_DIR_BY_ALL/$EXP_NAME/$IP_FILE" ]; then
+                EXP_IP=`cat "$TRAFFIC_DIR_BY_ALL/$EXP_NAME/$IP_FILE"`
+            fi
+            if [ -f "$TRAFFIC_DIR_BY_ALL/$EXP_NAME/$MAC_FILE" ]; then
+                EXP_MAC=`cat "$TRAFFIC_DIR_BY_ALL/$EXP_NAME/$MAC_FILE"`
+            fi
+            EXP_TAG=${BASH_REMATCH[2]}
+            EXP_TIME=${BASH_REMATCH[3]//_/ }
+            EXP_USER=`stat -c '%U' $ENTRY`
+
+            echo -n "$EXP_TIME $EXP_USER $EXP_NAME[$EXP_MAC/$EXP_IP] TAG='$EXP_TAG'"
+
+            for COMP_ENTRY in $TEMP_TAG_DIR/comp.${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.*.pcap ; do
+                if [[ "$COMP_ENTRY" =~ .*/comp\.(.*)\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+                    COMP_ID=${BASH_REMATCH[4]}
+
+                    if [ "$COMP_ID" == '*' ]; then
+                        continue;
+                    fi
+
+                    COMP_NAME=$COMP_ID
+                    COMP_IP="unknown"
+                    COMP_MAC="unknown"
+                    if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE" ]; then
+                        COMP_NAME=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE`
+                    fi
+                    if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE" ]; then
+                        COMP_IP=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE`
+                    fi
+                    if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE" ]; then
+                        COMP_MAC=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE`
+                    fi
+                    echo -n " +$COMP_NAME[$COMP_MAC/$COMP_IP]"
+                fi
+            done
+            echo
+        fi
+    done
+
+    if [ $ENTRIES -eq 0 ]; then
+        echo "There are no ongoing tagged experiments."
+    fi
+}
+
+function check_id
+{
+    if [[ ! -d "$TRAFFIC_DIR_BY_ALL/$1" ]]; then
+        echo "$ME: ID '$1' not found. ID must be the MAC addrress, IP address, or name of a registered device."
+        echo "For more information: $ME help"
+        exit 1
+    fi
+}
+
+function check_tag
+{
+    LOCAL_ID=$1
+    LOCAL_TAG=$2
+    LOCAL_MUST_EXIST=$3
+
+    if [[ ! "$LOCAL_TAG" =~ ^[A-Za-z0-9_]*$ ]] ; then
+        echo "$ME: Bad characters in TAG. TAG can only contain letters, numbers, and \"_\""
+        echo "For more information: $ME help"
+        exit 1
+    fi
+
+    TAGGED_PCAP=$TEMP_TAG_DIR/exp.$NAME.$TAG.*.pcap
+
+    for f in $TAGGED_PCAP; do
+        TAGGED_PCAP=$f
+        break
+    done
+
+    if [[ -f "$TAGGED_PCAP" ]] && [[ "$LOCAL_MUST_EXIST" == "false" ]] ; then
+        echo "$ME: Tagged experiment already exists for the specified device."
+        echo "For more information: $ME help"
+        exit 1
+    fi
+
+    if [[ ! -f "$TAGGED_PCAP" ]] && [[ "$LOCAL_MUST_EXIST" == "true" ]] ; then
+        echo "$ME: Cannot find tagged experiment for the specified device."
+        echo "For more information: $ME help"
+        exit 1
+    fi
+}
+
+function cmd_start
+{
+    check_tag $ID $TAG false
+
+    echo -n "Starting experiment \"$TAG\" on ${NOW//_/ }. Device: $NAME[$MAC/$IP]"
+    mkdir -p $TEMP_TAG_DIR
+
+    # Start tcpdump for device
+    MONITOR_IF=`cat $TRAFFIC_DIR_BY_ALL/$ID/$MONITOR_IF_FILE`
+    $TCPDUMP -U -i $MONITOR_IF -B 131072 -nns 0 -w "$TEMP_TAG_DIR/exp.$NAME.$TAG.$NOW.pcap" ether host $MAC &> /dev/null &
+    disown
+
+    if [ ! -z "$COMPANIONS" ]; then
+       echo -n " (Companions:"
+       for COMP_ID in $COMPANIONS; do
+            COMP_NAME=`cat "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE"`
+            COMP_MAC=`cat "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE"`
+            COMP_IP=`cat "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE"`
+            echo -n " $COMP_NAME[$COMP_MAC/$COMP_IP]"
+
+            # Start tcpdump for companion
+            MONITOR_COMP_IF=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$MONITOR_IF_FILE`
+            $TCPDUMP -U -i $MONITOR_COMP_IF -B 131072 -nns 0 -w "$TEMP_TAG_DIR/comp.$NAME.$TAG.$NOW.$COMP_NAME.pcap" ether host $COMP_MAC &> /dev/null &
+            disown
+       done
+       echo -n ")"
+    fi
+    echo
+    echo "To stop this experiment use: $ME stop $ID $TAG"
+    echo "To cancel this experiment use: $ME cancel $ID $TAG"
+}
+
+function cmd_stop
+{
+    check_tag $ID $TAG true
+    if [[ ! "$TAGGED_PCAP" =~ .*/exp\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+        echo "Experiment file $TAGGED_PCAP is malformed. Failed to stop the experiment."
+        exit
+    fi
+
+    EXP_USER=`stat -c '%U' $TAGGED_PCAP`
+    EXP_USERID=`id $EXP_USER -u`
+    CURRENT_USERID=`id -u`
+
+    if [[ "$CURRENT_USERID" != "0" ]] && [[ "$CURRENT_USERID" != "$EXP_USERID" ]]; then
+        echo "$ME: Permission denied."
+        echo "You are not the owner of the experiment. Only $EXP_USER can $COMMAND it."
+        exit
+    fi
+
+    START_DATE=${BASH_REMATCH[3]}
+    START_TIMESTAMP=`date -d "${START_DATE//_/ }" +%s`
+    END_TIMESTAMP=`date +%s`
+    DURATION=$((END_TIMESTAMP-START_TIMESTAMP))
+
+    echo "Stopping experiment \"$TAG\" after ${DURATION}s. Device: $NAME[$MAC/$IP]"
+
+    # Stop device tcpdump here
+    PIDS=$(ps aux | grep "[t]cpdump.*$TAGGED_PCAP" | awk '{print $2}')
+    if [ ! -z "$PIDS" ] ; then
+        kill -2 $PIDS
+    fi
+
+    # Move device file
+    mkdir -p $TAG_DIR/$NAME
+    chgrp $TAGGED_EXPERIMENTS_GROUP $TAG_DIR/$NAME &> /dev/null
+    chmod g+w $TAG_DIR/$NAME &> /dev/null
+    mkdir -p $TAG_DIR/$NAME/$TAG
+    chgrp $TAGGED_EXPERIMENTS_GROUP $TAG_DIR/$NAME/$TAG &> /dev/null
+    chmod g+w $TAG_DIR/$NAME/$TAG &> /dev/null
+
+    NEWFILE_DEV="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.pcap"
+    mv "$TAGGED_PCAP" "$NEWFILE_DEV"
+
+    NEWFILE_DEV_SIZE=`stat --printf="%s" $NEWFILE_DEV`
+    echo "Created: $NEWFILE_DEV ($NEWFILE_DEV_SIZE bytes)"
+    MITM_DEV_HTTP="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.http"
+    MITM_DEV_HTTPS="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.https"
+    for NETWORK_NAME in $NETWORK_NAMES; do
+        $CURRENT_DIR/extract-mitm $MAC $NETWORK_NAME http $START_TIMESTAMP $END_TIMESTAMP >> $MITM_DEV_HTTP
+        $CURRENT_DIR/extract-mitm $MAC $NETWORK_NAME https $START_TIMESTAMP $END_TIMESTAMP >> $MITM_DEV_HTTPS
+    done
+    MITM_DEV_HTTP_LINES=`cat $MITM_DEV_HTTP | wc -l`
+    echo "Created: $MITM_DEV_HTTP ($MITM_DEV_HTTP_LINES HTTP flows)"
+    MITM_DEV_HTTPS_LINES=`cat $MITM_DEV_HTTPS | wc -l`
+    echo "Created: $MITM_DEV_HTTPS ($MITM_DEV_HTTPS_LINES HTTPS flows)"
+
+    for COMP_PCAP in $TEMP_TAG_DIR/comp.${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.*.pcap ; do
+       if [[ "$COMP_PCAP" =~ .*/comp\.(.*)\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+           COMP_ID=${BASH_REMATCH[4]}
+           COMP_NAME=$COMP_ID
+           if [ "$COMP_ID" == '*' ]; then
+               continue;
+           fi
+           COMP_IP="unknown"
+           COMP_MAC="unknown"
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE" ]; then
+               COMP_NAME=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE`
+           fi
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE" ]; then
+               COMP_IP=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE`
+           fi
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE" ]; then
+               COMP_MAC=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE`
+           fi
+
+           echo "Companion $COMP_NAME[$COMP_MAC/$COMP_IP]"
+
+           # Stop companion tcpdump here
+           PIDS=$(ps aux | grep "[t]cpdump.*$COMP_PCAP" | awk '{print $2}')
+           if [ ! -z "$PIDS" ] ; then
+               kill -2 $PIDS
+           fi
+           NEWFILE_COMP="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.companion.$COMP_NAME.pcap"
+           mv "$COMP_PCAP" "$NEWFILE_COMP"
+           NEWFILE_COMP_SIZE=`stat --printf="%s" $NEWFILE_COMP`
+           echo "Created: $NEWFILE_COMP ($NEWFILE_COMP_SIZE bytes)"
+           MITM_COMP_HTTP="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.companion.$COMP_NAME.http"
+           MITM_COMP_HTTPS="$TAG_DIR/$NAME/$TAG/$START_DATE.${DURATION}s.companion.$COMP_NAME.https"
+           for NETWORK_NAME in $NETWORK_NAMES; do
+               $CURRENT_DIR/extract-mitm $COMP_MAC $NETWORK_NAME http $START_TIMESTAMP $END_TIMESTAMP >> $MITM_COMP_HTTP
+               $CURRENT_DIR/extract-mitm $COMP_MAC $NETWORK_NAME https $START_TIMESTAMP $END_TIMESTAMP >> $MITM_COMP_HTTPS
+           done
+           MITM_COMP_HTTP_LINES=`cat $MITM_COMP_HTTP | wc -l`
+           echo "Created: $MITM_COMP_HTTP ($MITM_COMP_HTTP_LINES HTTP flows)"
+           MITM_COMP_HTTPS_LINES=`cat $MITM_COMP_HTTPS | wc -l`
+           echo "Created: $MITM_COMP_HTTPS ($MITM_COMP_HTTPS_LINES HTTPS flows)"
+       fi
+    done
+}
+
+function cmd_cancel
+{
+    check_tag $ID $TAG true
+    if [[ ! "$TAGGED_PCAP" =~ .*/exp\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+        echo "Experiment file $TAGGED_PCAP is malformed. Failed to cancel the experiment."
+        exit
+    fi
+
+    EXP_USER=`stat -c '%U' $TAGGED_PCAP`
+    EXP_USERID=`id $EXP_USER -u`
+    CURRENT_USERID=`id -u`
+
+    if [[ "$CURRENT_USERID" != "0" ]] && [[ "$CURRENT_USERID" != "$EXP_USERID" ]]; then
+        echo "$ME: Permission denied."
+        echo "You are not the owner of the experiment. Only $EXP_USER can $COMMAND it."
+        exit
+    fi
+
+    START_DATE=${BASH_REMATCH[3]}
+    START_TIMESTAMP=`date -d "${START_DATE//_/ }" +%s`
+    END_TIMESTAMP=`date +%s`
+    DURATION=$((END_TIMESTAMP-START_TIMESTAMP))
+
+    echo -n "Canceling experiment \"$TAG\" after ${DURATION}s. Device: $NAME[$MAC/$IP]"
+
+    # Stop device tcpdump here
+    PIDS=$(ps aux | grep "[t]cpdump.*$TAGGED_PCAP" | awk '{print $2}')
+    if [ ! -z "$PIDS" ] ; then
+        kill -2 $PIDS
+    fi
+
+    rm "$TAGGED_PCAP"
+    for COMP_PCAP in $TEMP_TAG_DIR/comp.${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.*.pcap ; do
+       if [[ "$COMP_PCAP" =~ .*/comp\.(.*)\.(.*)\.(.*)\.(.*)\.pcap ]]; then
+           COMP_ID=${BASH_REMATCH[4]}
+           if [ "$COMP_ID" == '*' ]; then
+               continue;
+           fi
+           COMP_NAME=$COMP_ID
+           COMP_IP="unknown"
+           COMP_MAC="unknown"
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE" ]; then
+               COMP_NAME=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$NAME_FILE`
+           fi
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE" ]; then
+               COMP_IP=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$IP_FILE`
+           fi
+           if [ -f "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE" ]; then
+               COMP_MAC=`cat $TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE`
+           fi
+
+           echo -n " Companion $COMP_NAME[$COMP_MAC/$COMP_IP]"
+
+           # Stop companion tcpdump here
+           PIDS=$(ps aux | grep "[t]cpdump.*$COMP_PCAP" | awk '{print $2}')
+           if [ ! -z "$PIDS" ] ; then
+               kill -2 $PIDS
+           fi
+           rm "$COMP_PCAP"
+       fi
+    done
+    echo
+}
+
+if [[ $# -eq 0 ]] || [[ "$1" == "help" ]]; then
+    help
+    exit 0
+fi
+
+if [[ "$COMMAND" == "stop" ]] && [[ -n "$PARAM3" ]]; then
+    TAG_DIR="$PARAM3"
+fi
+
+check_permissions
+
+if [ "$COMMAND" == "list" ]; then
+    cmd_list
+    exit 0
+fi
+
+if [[ "$COMMAND" != "start" ]] && [[ "$COMMAND" != "start-with-companion" ]] && [[ "$COMMAND" != "stop" ]] && [[ "$COMMAND" != "cancel" ]]; then
+    echo "$ME: Command not found."
+    usage
+    exit 1
+fi
+
+if [[ -z "$PARAM2"  ]] || ( [[ "$COMMAND" == "start-with-companion" ]] && [[ -z "$PARAM3" ]] ); then
+    echo "$ME: Insufficient number of arguments."
+    echo "For more information: $ME help"
+    exit 1
+fi
+
+if [[ ! -z "$PARAM3"  ]] && [[ "$COMMAND" == "start" ]]; then
+    echo "$ME: Too many arguments."
+    echo "For more information: $ME help"
+    exit 1
+fi
+
+
+ID=$PARAM1
+COMPANIONS="";
+TAG="$PARAM2"
+
+check_id $ID
+MAC=`cat "$TRAFFIC_DIR_BY_ALL/$ID/$MAC_FILE"`
+NAME=`cat "$TRAFFIC_DIR_BY_ALL/$ID/$NAME_FILE"`
+IP=`cat "$TRAFFIC_DIR_BY_ALL/$ID/$IP_FILE"`
+
+if [ "$COMMAND" == "start-with-companion" ]; then
+    COMPANIONS="$PARAM2"
+    TAG="$PARAM3"
+    COMPANIONS=${COMPANIONS//,/ }
+    for COMP_ID in $COMPANIONS; do
+        check_id $COMP_ID
+        COMP_MAC=`cat "$TRAFFIC_DIR_BY_ALL/$COMP_ID/$MAC_FILE"`
+
+        if [[ "$COMP_MAC" == "$MAC" ]]; then
+            echo "$ME: bad COMPANION_ID. ID and COMPANION_ID must belong to different devices."
+            echo "For more information: $ME help"
+            exit 1
+        fi
+    done
+fi
+
+if [[ "$COMMAND" == "start" ]] || [[ "$COMMAND" == "start-with-companion" ]]; then
+    cmd_start
+    exit 0
+fi
+
+if [ "$COMMAND" == "stop" ]; then
+    cmd_stop
+    exit 0
+fi
+
+if [ "$COMMAND" == "cancel" ]; then
+    cmd_cancel
+    exit 0
+fi
+

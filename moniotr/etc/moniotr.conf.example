@@ -1,0 +1,168 @@
+# Mon(IoT)r Configuration file
+
+### WARNING: Some changes to this file have immediate effects once saved. ###
+### It is recommended to stop Mon(IoT)r before editing this file.         ###
+
+# (mandatory) Installation dir for Mon(IoT)r
+#
+MONIOTR_DIR="/opt/moniotr"
+
+# (mandatory) Interfaces of monitored networks.
+# These are the networks actually used by the monitored devices (the ones
+# that have the DHCPD server running). At least one network interface is
+# needed. Providing more than one interface means that there are more
+# than a single monitored network. If it is the case, all other options that
+# refer to networks need the same number of parameters (separated ny
+# spaces).
+# It is important to note that you have multiple interfaces on the same
+# monitored network, those intefaces should be connected to a single
+# bridge, and such bridge should appear on this option as a single
+# interface.
+#
+MONITORED_INTERFACES="br10 br11 br12"
+
+# (optional) WAN interfaces for the monitored networks.
+# These are the gateways that will handle the destination of the traffic for the monitored networks. 
+# routing and firewall rules to route traffic through these gateways, including NAT will be 
+# configured when the networking component of Mon(IoT)r is started.
+# A special value of "default" will use the default gateway of the system.
+# A special value of "none" will block WAN traffic.
+# If this option is not set, all the monitored networks will be configured with the default gateway.
+# WARNING: If this option is set, There should be a gateway configured for each monitored network!
+#
+# WAN_GATEWAYS="default default default"
+
+# (optional) Names of monitored networks.
+# If this option is not set, the monitored networks will have the
+# same names of the monitored network interfaces.
+# WARNING: These names can be arbitrary, but one for each monitored network 
+# MUST must be specified! They must be different!
+#
+NETWORK_NAMES="unctrl ctrl1 ctrl2"
+
+# (optional) Mirrors of monitored networks from an external switch.
+# Mirroring must be used if interested in intra-LAN traffic using
+# an external switch.
+# These interfaces must be connected to the mirror interface
+# of an external switch. If not using an external switch, this option must be commented out.
+# WARNING: If this option is set, there should be a mirror for each monitored network!
+#
+SWITCH_MIRRORS="mirror-vlan10 mirror-vlan11 mirror-vlan12"
+
+# (optional) Get wifi-to-wifi traffic. This option is needed if you want to capture
+# the traffic that is exchanged between stations connected to the same Wi-Fi access point.
+# Captured traffic will be merged with the traffic from monitored interfaces (or with the
+# switch mirrors, if configured).
+# This feature has been tested with PCI and PCIe devices based on the Atheros chipset
+# and driver ath9k. It does not work with USB devices and it has not been tested with other
+# hardware.
+# To activate this feature you should group all the wifi interfaces that are bridged to
+# the specific monitored network (separated with a comma). If there are more than a
+# single monitored network, you must separate the different groups using a space.
+# If a monitored network has no devices to be mirrored, use "none".
+# WARNING: If this option is not commented out, there should be at least one source of 
+# traffic for each monitored network!
+#
+WIFI_SOURCES="wlan0.1,wlan1.1,wlan2.1 wlan0.2,wlan1.2,wlan2.2 wlan0.3,wlan1.3,wlan2.3"
+
+# (optional) Copy all the traffic of monitored network (including the traffic from the
+# switch mirror and from the wifi sources if any of them has been configured) to
+# other network interfaces.
+# This option is optional and only useful if the monitored traffic has to be analyzed 
+# externally.
+# WARNING: If this option is not commented out, there should be at least one source of
+# traffic for each monitored network! If a network should not be copied, use "none".
+#
+# COPY_MONITORED_NETWORKS="copy-vlan10 copy-vlan11 copy-vlan12"
+
+# (optional) Devices name configuration
+#
+DEVICES_FILE="$MONIOTR_DIR/etc/devices.txt"
+
+# (mandatory) Destination of captured traffic and metadata
+#
+TRAFFIC_DIR="$MONIOTR_DIR/traffic"
+
+# (mandatory) Destination of temporary data 
+#
+TEMP_DIR="$MONIOTR_DIR/tmp"
+
+# (mandatory) Destination of log files
+#
+LOG_DIR="$MONIOTR_DIR/log"
+
+# (mandatory) Path for tcpdump
+#
+TCPDUMP="/usr/sbin/tcpdump"
+
+# (mandatory) Set the default policy for TLS interception.
+# Valid options are: off, manual-exceptions, auto-exceptions,
+# ignore-exceptions.
+#               off - this policy prevents TLS interception.
+# manual-exceptions - this policy enables TLS interception, exceptions
+#                     are supported, but have to be manually added.
+#   auto-exceptions - this policy enables TLS interception, exceptions
+#                     are supported and automatically added when TLS
+#                     interception fails (if supported by mitmproxy).
+# ignore-exceptions - this policy enables TLS interception, and any
+#                     exceptions are ignored.
+# A device can override the default policy by configuring the mitm-tls-policy.txt
+#
+MITMPROXY_DEFAULT_TLS_POLICY="off"
+
+# (mandatory) Path for the mitmdump executable of mitmproxy.
+#
+MITMPROXY_MITMDUMP="/usr/local/bin/mitmdump"
+
+# (mandatory) Local TCP ports for mitmproxy. These ports should not be in use
+# by other processes.
+# WARNING: There should be a different local port for each monitored network
+#
+MITMPROXY_LOCAL_PORTS="10080 10081 10082"
+
+# (mandatory) Intercept ports for mitmproxy. These are the ports that will be
+# intercepted by mitmproxy. Only HTTP and HTTPS (TLS) traffic can be intercepted.
+# If intercepting HTTPS/TLS traffic, the client must trust the mitmproxy
+# root certificate.
+#
+MITMPROXY_INTERCEPT_HTTP_PORTS="80 8000 8080"
+MITMPROXY_INTERCEPT_HTTPS_PORTS="443 8443"
+
+# (mandatory) Configuration and certificate directory for mitmproxy.
+# If the directory is empty, new certificates will be generated the first time
+# mitmproxy is started.
+#
+MITMPROXY_CONF_DIR="$MONIOTR_DIR/mitmproxy"
+
+# (optional) Experiments group. This is the PAM group that has the possibility to run
+# experiments using "tag-experiment", and to delete/modify their data.
+#
+# TAGGED_EXPERIMENTS_GROUP="traffic"
+
+# (mandatory) Named views management. Master file containing the reference to all
+# DNS views of the "named" daemon. This file is managed automatically and is created
+# if not existent.
+NAMED_VIEWS="$MONIOTR_DIR/etc/named.views"
+
+# (mandatory) Enable DNS override using bind9/named. If this is enabled, you have to
+# set-up a proper bind9 configuration and you must set the NAMED_VIEWS and
+# NAMED_ZONES_DIR configuration options.
+DNS_OVERRIDE="false"
+
+# (optional) Named dynamically configured file containing the reference to all
+# DNS views of the "named" daemon. This file is managed automatically and is created
+# if not existent.
+NAMED_VIEWS="$MONIOTR_DIR/var/named.views"
+
+# (optional) Named zones management directory. This directory contains zones for the
+# "named" daemon. These zones are managed automatically.
+NAMED_RPZ_DIR="$MONIOTR_DIR/var/named-rpz"
+
+# (optional) Local UDP port used by Named (default: 53).
+NAMED_PORT="53"
+
+# (mandatory) Enable IP block using iptables.
+IP_BLOCK="true"
+
+# (optional) Local port to listen to for blocked IP connection whose policy is "listen".
+IP_BLOCK_LISTEN_PORT="56565"

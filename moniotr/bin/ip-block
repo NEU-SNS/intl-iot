@@ -1,0 +1,242 @@
+#!/bin/bash
+
+# This script manages IP block.
+# Changes made by this script are persistent across restarts.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+COMMAND="$1"
+ID="$2"
+IP="$3"
+PROTOCOL="$4"
+PORTS="$5"
+POLICY="$6"
+DEST="$TRAFFIC_DIR/by-all/$ID"
+MAC_FILE=$DEST/$MAC_FILE
+IPBLOCK_FILE=$DEST/$IPBLOCK_FILE
+MONITOR_IF_FILE=$DEST/$MONITOR_IF_FILE
+ME=$(basename $0)
+
+function usage()
+{
+    echo "Usage: $ME <add|del> <ID> <IP> [<PROTOCOL>] [<PORT(S)>] [<POLICY>]"
+    echo "       $ME <sync|wipe|list> <ID>"
+}
+
+function help()
+{
+    echo "This script manages IP blocking on a per-device basis."
+    echo "Changes made using this script are applied immediately and are persistent"
+    echo "across restarts."
+    echo
+    usage
+    echo
+    echo "add           Add or update an IP block for a specific device."
+    echo
+    echo "del           Remove an existing IP block for a specific device."
+    echo
+    echo "sync          Synchronizes IP blocks for a specific device. This is needed the first time the"
+    echo "              device connects or in case of manual changes to the device configuration."
+    echo
+    echo "list          List all existing IP blocks for a specific device."
+    echo
+    echo "wipe          Remove all existing IP blocks for a specific device."
+    echo
+    echo "ID            Device identifier. It can be either a MAC Address, an IP Address, or the"
+    echo "              name of the device."
+    echo
+    echo "IP            Destination IP that will be blocked."
+    echo
+    echo "PROTOCOL      IP protocol that will be blocked (supported: 'tcp', 'udp', 'all')."
+    echo "              Default protocol is 'all'."
+    echo
+    echo "PORT(S)       Destination ports that will be blocked (supported: 'NNN', 'NNN:MMM', 'NNN,MMM')."
+    echo "              Default port is '1:65535', which means any port. Port syntax is not sanity checked and"
+    echo "              should be compliant with the iptables version in use."
+    echo "              Note: ports are forced to be 1:65535 when using the 'all' protocol."
+    echo
+    echo "POLICY        Blocking policy: 'drop', 'reject', 'listen'"
+    echo "              Default blocking policy is 'listen' for tcp and 'drop' for other protocols. 'listen' means"
+    echo "              that the tcp connection is accepted with no further interaction."
+    echo "              The difference between 'drop' and 'reject' is that drop will make the connection time out,"
+    echo "              while 'reject' means that the device will be notified that the connection has been refused."
+    echo "              Note: policy is forced to be 'drop' when using non-tcp protocols."
+    echo
+    echo "Examples: $ME add 11:22:33:44:55:66 1.2.3.4 tcp 80,443 listen"
+    echo "          $ME del 11:22:33:44:55:66 2.3.4.5 all 8080:8089"
+    echo "          $ME sync 123.124.125.126"
+    exit
+}
+
+function add-ip-block()
+{
+    MAC=`cat $MAC_FILE`
+    [ -z "$3" ] && $3="127.0.0.1"
+    echo "Adding to $1 a new IP block entry for $2 (protocol=$3, port(s)=$4, policy=$5)."
+    sed -i "/^$2 $3 $4/d" $IPBLOCK_FILE
+    echo "$2 $3 $4 $5" >> $IPBLOCK_FILE
+    sort -u $IPBLOCK_FILE -o $IPBLOCK_FILE
+}
+
+function del-ip-block()
+{
+    if [ ! -f "$IPBLOCK_FILE" ] ; then
+        echo "Destination $1 does not have a valid $IPBLOCK_FILE file. Aborting."
+        exit 1
+    fi
+    MAC=`cat $MAC_FILE`
+    echo "Removing from $1 an IP block entry for $2 (protocol=$3, port(s)=$4)."
+    sed -i "/^$2 $3 $4 .*/d" $IPBLOCK_FILE
+}
+
+function sync-ip-block()
+{
+
+    if [ ! -f "$IPBLOCK_FILE" ] ; then
+        echo "Destination $1 does not have a valid $IPBLOCK_FILE file. Aborting."
+        exit 1
+    fi
+
+    if [ ! -f "$MONITOR_IF_FILE" ] ; then
+        echo "Destination $1 does not have a valid $MONITOR_IF_FILE file. Aborting."
+        exit 1
+    fi
+
+    MAC=`cat $MAC_FILE`
+
+    iptables -t nat -N block$MAC &> /dev/null
+    iptables -N block$MAC &> /dev/null
+    iptables -t nat -F block$MAC
+    iptables -F block$MAC
+    iptables -t nat -C IPBLOCK -m mac --mac-source $MAC -j block$MAC &> /dev/null || iptables -t nat -A IPBLOCK -m mac --mac-source $MAC -j block$MAC
+    iptables -C IPBLOCK -m mac --mac-source $MAC -j block$MAC &> /dev/null || iptables -A IPBLOCK -m mac --mac-source $MAC -j block$MAC
+
+    while read in; do
+        if [[ "$in" =~ (.*)[[:space:]](.*)[[:space:]](.*)[[:space:]](.*) ]]; then
+            DEST_IP=${BASH_REMATCH[1]}
+            DEST_PROTOCOL=${BASH_REMATCH[2]}
+            DEST_PORTS=${BASH_REMATCH[3]}
+            DEST_POLICY=${BASH_REMATCH[4]}
+
+            # Add tcp blocking for reject and listen policies
+            if [[ "$DEST_PROTOCOL" == "tcp" ]]; then
+                if [[ "$DEST_POLICY" == "reject" ]]; then
+                    iptables -I block$MAC -p tcp -d $DEST_IP -m multiport --dports $DEST_PORTS -j REJECT
+                elif [[ "$DEST_POLICY" == "listen" ]]; then
+                    if [ -z "$INTERFACE_IP" ]; then
+                       MONITOR_IF=`cat $MONITOR_IF_FILE`
+                       INTERFACE_IP=`ip addr show $MONITOR_IF | grep "inet\b" | awk '{print $2}' | cut -d/ -f1`
+                    fi
+                    iptables -t nat -I block$MAC -p tcp -d $DEST_IP -m multiport --dports $DEST_PORTS -j DNAT --to $INTERFACE_IP:$IP_BLOCK_LISTEN_PORT
+                fi
+            fi
+
+            # Add blocking for other cases
+            if [[ "$DEST_PROTOCOL" == "udp" ]] || ( [[ "$DEST_PROTOCOL" == "tcp" ]] && [[ "$DEST_POLICY" == "drop" ]] ); then
+                iptables -A block$MAC -p $DEST_PROTOCOL -d $DEST_IP -m multiport --dports $DEST_PORTS -j DROP
+            elif [[ "$DEST_PROTOCOL" == "all" ]]; then
+                iptables -A block$MAC -d $DEST_IP -j DROP
+            fi
+        fi
+    done < "$IPBLOCK_FILE"
+}
+
+function list-ip-block()
+{
+    if [ ! -f "$IPBLOCK_FILE" ] ; then
+        echo "Destination $1 does not have a valid $IPBLOCK_FILE file. Aborting."
+        exit 1
+    fi
+
+    echo "List of IP block entries for $1"
+    while read in; do
+        if [[ "$in" =~ (.*)[[:space:]](.*)[[:space:]](.*)[[:space:]](.*) ]]; then
+            echo "   ${BASH_REMATCH[1]} proto=${BASH_REMATCH[2]} port(s)=${BASH_REMATCH[3]} policy=${BASH_REMATCH[4]}"
+        fi
+    done < "$IPBLOCK_FILE"
+    echo "End of list"
+}
+
+function wipe-ip-block()
+{
+    MAC=`cat $MAC_FILE`
+    echo Permanenting removing IP block entries associated with $1...
+    mv "$IPBLOCK_FILE" "$IPBLOCK_FILE.old"
+    touch "$IPBLOCK_FILE"
+    sync-ip-block $1
+}
+
+if [ "$IP_BLOCK" != "true" ]; then
+    echo "This command is disabled because the IP_BLOCK configuration option is not set to true."
+    exit 1
+fi
+
+if [[ -z "$COMMAND" ]] || [[ "$COMMAND" != "add" ]] && [[ "$COMMAND" != "del" ]] && [[ "$COMMAND" != "sync" ]] && \
+   [[ "$COMMAND" != "wipe" ]] && [[ "$COMMAND" != "list" ]]; then
+    help
+    exit
+fi
+
+if [[ -z "$ID" ]]; then
+    echo Destination not specified.
+    usage
+    exit 1
+fi
+
+if [ ! -f "$MAC_FILE" ] ; then
+    echo "Destination $ID does not exist or is not properly configured. Aborting."
+    exit 1
+fi
+
+
+if ( [[ "$COMMAND" == "del" ]] || [[ "$COMMAND" == "add" ]] ); then
+
+    if [[ -z "$IP" ]]; then
+        echo IP not specified.
+        usage
+        exit 1
+    fi
+
+    if [ -z "$PROTOCOL" ]; then
+        PROTOCOL="all"
+    elif [[ "$PROTOCOL" != "all" ]] && [[ "$PROTOCOL" != "tcp" ]] && [[ "$PROTOCOL" != "udp" ]] && [[ "$PROTOCOL" != "icmp" ]]; then
+        echo "Protocol must be: 'all', 'tcp', 'udp', or 'icmp'."
+        exit 1
+    fi
+
+    if [ -z "$PORTS" ]; then
+        PORTS="1:65535"
+    fi
+
+    if [[ "$PROTOCOL" == "tcp" ]]; then
+        [ -z "$POLICY" ] && POLICY="listen"
+
+        if [[ "$POLICY" != "listen" ]] && [[ "$POLICY" != "drop" ]] && [[ "$POLICY" != "reject" ]]; then
+            echo "Policy must be: 'drop', 'reject', or 'listen'."
+            exit 1
+        fi
+    else
+        POLICY="drop"
+    fi
+
+    if [[ "$PROTOCOL" == "all" ]]; then
+        PORTS="1:65535"
+    fi
+fi
+
+if [[ "$COMMAND" == "add" ]]; then
+    add-ip-block $ID $IP $PROTOCOL $PORTS $POLICY
+    sync-ip-block $ID
+elif [[ "$COMMAND" == "del" ]]; then
+    del-ip-block $ID $IP $PROTOCOL $PORTS
+    sync-ip-block $ID
+elif [[ "$COMMAND" == "sync" ]]; then
+    echo Syncing IP block entries associated with $ID...
+    sync-ip-block $ID
+elif [[ "$COMMAND" == "wipe" ]]; then
+    wipe-ip-block $ID
+    sync-ip-block $ID
+elif [[ "$COMMAND" == "list" ]]; then
+    list-ip-block $ID
+fi

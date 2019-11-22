@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# This script configures a device when it appears on a network.
+# It is typically called at startup or by the dhcp demon when the device first connects.
+# Usage: setup-device <IP> <MAC>
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+ME=$(basename $0)
+
+if [[ -z "$2" ]]; then
+    echo "This script configures a new device, or updates the configuration for an existing device."
+    echo "Configuring a device means creating the proper directory structure for storing device data,"
+    echo "capture the traffic (if tcpdump is active), and synchronizing the man in the middle exceptions."
+    echo "For performance reasons, this script only performs a full setup the first time a device connects."
+    echo "If an existing device appears, a simplified setup occurs (which does not consider any changes"
+    echo "made manually. To avoid problem, only perform modifications using the tools in the bin directory."
+    echo
+    echo "Usage $ME <IP> <MAC> <HOST>"
+    echo
+    echo "IP    This is the IP address for the device that has to be configured."
+    echo
+    echo "MAC   This is the MAC (L2) address for such device."
+    echo
+    echo "HOST  This is the host identifier chosen by such device."
+    exit 1
+fi
+
+IP="$1"
+MAC="$2"
+MAC=`sed 's/0\([0-9A-Fa-f]\)/\1/g;s/.*/\L\0/' <<< $MAC`
+
+HOST="$3"
+IF=`ip route get $IP | cut -d ' ' -f 3 | head -n 1`
+MONITOR_IF="undef"
+LOG="$LOG_DIR/setup-device.log"
+FILENAME="%Y-%m-%d_%H.%M.%S_$IP.pcap"
+
+# Find the network name
+read -r -a monitored_interfaces <<< $MONITORED_INTERFACES
+read -r -a network_mirrors <<< $SWITCH_MIRRORS
+read -r -a network_names <<< $NETWORK_NAMES
+for index in "${!network_names[@]}" ; do
+    if [ "${monitored_interfaces[index]}" == "$IF" ]; then
+        MONITOR_IF="${network_mirrors[index]}"
+        NETWORK_NAME="${network_names[index]}"
+    fi
+done
+
+if [ "$MONITOR_IF" == "undef" ]; then
+    echo "$TIMESTAMP $IP $MAC not captured. $IF is not a monitored interface." | sudo tee -a $LOG &> /dev/null
+    exit 0
+fi
+
+if [ -f "$TRAFFIC_DIR/by-mac/$MAC/$SPOOF_MAC_FILE" ]; then
+    OLD_MAC=$MAC
+    MAC=`cat $TRAFFIC_DIR/by-mac/$MAC/$SPOOF_MAC_FILE`
+    echo "$TIMESTAMP $SPOOF_MAC_FILE found. Renaming $OLD_MAC to $MAC" | sudo tee -a $LOG &> /dev/null
+fi
+
+NAME=`cat $DEVICES_FILE | grep "$MAC" | cut -d " " -f 2`
+if [[ -z NAME ]]; then
+   NAME="unknown"
+fi
+
+if [ -z "$HOST" ]; then
+   HOST=`dhcp-lease-list --parsable 2> /dev/null | grep " $IP " | cut -d ' ' -f 6`
+fi
+
+echo "$TIMESTAMP $IF/$MONITOR_IF $NETWORK_NAME $IP $MAC $NAME $HOST" | sudo tee -a $LOG &> /dev/null
+
+sudo mkdir -p "$TRAFFIC_DIR/by-mac/$MAC/$NETWORK_NAME"
+sudo mkdir -p "$TRAFFIC_DIR/by-ip"
+sudo mkdir -p "$TRAFFIC_DIR/by-all"
+sudo mkdir -p "$TRAFFIC_DIR/by-name"
+
+[ ! -d "$TRAFFIC_DIR/by-ip/$IP" ] && sudo ln -s "$TRAFFIC_DIR/by-mac/$MAC" "$TRAFFIC_DIR/by-ip/$IP"
+[ ! -d "$TRAFFIC_DIR/by-all/$MAC" ] && sudo ln -s "$TRAFFIC_DIR/by-mac/$MAC" "$TRAFFIC_DIR/by-all/$MAC"
+[ ! -d "$TRAFFIC_DIR/by-all/$IP" ] && sudo ln -s "$TRAFFIC_DIR/by-mac/$MAC" "$TRAFFIC_DIR/by-all/$IP"
+
+if [ "$NAME" != "unknown" ]; then
+    [ ! -d "$TRAFFIC_DIR/by-name/$NAME" ] && sudo ln -s "$TRAFFIC_DIR/by-mac/$MAC" "$TRAFFIC_DIR/by-name/$NAME"
+    [ ! -d "$TRAFFIC_DIR/by-all/$NAME" ] && sudo ln -s "$TRAFFIC_DIR/by-mac/$MAC" "$TRAFFIC_DIR/by-all/$NAME"
+fi
+
+echo "$IP" | sudo tee "$TRAFFIC_DIR/by-mac/$MAC/$IP_FILE" &> /dev/null
+echo "$MONITOR_IF" | sudo tee "$TRAFFIC_DIR/by-mac/$MAC/$MONITOR_IF_FILE" &> /dev/null
+sudo cp "$TRAFFIC_DIR/by-mac/$MAC/$IP_FILE" "$TRAFFIC_DIR/by-mac/$MAC/$IF.$IP_FILE"
+echo "$MAC" | sudo tee "$TRAFFIC_DIR/by-mac/$MAC/$MAC_FILE" &> /dev/null
+sudo touch "$TRAFFIC_DIR/by-mac/$MAC/$EXCEPTIONS_FILE"
+sudo touch "$TRAFFIC_DIR/by-mac/$MAC/$DNSOVERRIDE_FILE"
+sudo touch "$TRAFFIC_DIR/by-mac/$MAC/$IPBLOCK_FILE"
+sudo touch "$TRAFFIC_DIR/by-mac/$MAC/$NAMED_ZONE_FILE"
+echo "$NAME" | sudo tee "$TRAFFIC_DIR/by-mac/$MAC/$NAME_FILE" &> /dev/null
+
+
+if [ ! -z "$HOST" ]; then
+    echo "$HOST" | sudo tee "$TRAFFIC_DIR/by-mac/$MAC/$DHCP_INFO_FILE" &> /dev/null
+fi
+
+# Setup MITM rules for the device, if not configured
+sudo iptables -t nat -N $MAC &> /dev/null
+sudo iptables -t nat -C PREROUTING -m mac --mac-source $MAC -j $MAC &> /dev/null || sudo $CURRENT_DIR/mitm-exception sync $MAC &> /dev/null &
+
+# Start tcpdump only if capture is enabled. We use an hidden file to save the capture status.
+
+if [[ -f "$TCPDUMP_ENABLED_FILE" ]] && [[ "$LAST_BOOT" == `cat $TCPDUMP_ENABLED_FILE` ]]; then
+    # Test if the capture is already running
+    MYPID=`pgrep -f "$MONITOR_IF .*pcap ether host $MAC"`
+
+    if [ -z "$MYPID" ]
+    then
+        sudo nice -20 $TCPDUMP -i $MONITOR_IF -B 32768 -nns 0 -C 128 -G 86400 -w "$TRAFFIC_DIR/by-mac/$MAC/$NETWORK_NAME/$FILENAME" ether host $MAC &> /dev/null &
+        disown
+    fi
+fi
+
+if [ "$IP_BLOCK" == "true" ]; then
+    # Configure IP block
+    sudo $CURRENT_DIR/ip-block sync $MAC &> /dev/null
+fi
+
+if [ "$DNS_OVERRIDE" == "true" ]; then
+    # Configure DNS (bind9/named)
+
+    NAME_VIEW_LINE="view $IP { match-clients { $IP; }; zone \"rpz\" { type master; file \"$NAMED_RPZ_DIR/$MAC.rpz\"; }; };"
+
+    if grep -q "$NAME_VIEW_LINE" $NAMED_VIEWS; then
+        false
+    elif grep -q " $IP " $NAMED_VIEWS; then
+        grep -v " $IP " $NAMED_VIEWS | sudo tee $NAMED_VIEWS &> /dev/null
+        echo "$NAME_VIEW_LINE" | sudo tee -a $NAMED_VIEWS &> /dev/null
+        sudo $CURRENT_DIR/dns-override sync $MAC &> /dev/null
+    else
+        echo "$NAME_VIEW_LINE" | sudo tee -a $NAMED_VIEWS &> /dev/null
+        sudo $CURRENT_DIR/dns-override sync $MAC &> /dev/null
+    fi
+fi

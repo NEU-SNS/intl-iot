@@ -1,0 +1,140 @@
+#!/bin/bash
+
+# This script manages the MITM daemon (currently mitmproxy/mitmdump).
+# Note: mitm exceptions are not affected by this script.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+MITM_TRAFFIC_EXPERIMENTS="$TRAFFIC_DIR/by-ip/"
+
+function usage()
+{
+    echo "Usage: $ME <start|stop|restart|status>"
+}
+
+function help()
+{
+    echo "This script manages the activation status of mitmproxy capture for Mon(IoT)r."
+    echo "Modifications done by this script are not persistent across restarts."
+    echo
+    usage
+    echo
+    echo "start         Immediately starts mitmproxy capture for all the devices connected."
+    echo
+    echo "stop          Immediately stops mitmproxy capture for all the devices connected."
+    echo
+    echo "restart       Immediately restarts mitmproxy capture for all the devices connected."
+    echo
+    echo "status        Query the current status of mitmproxy capture."
+}
+
+function mitm-status {
+    PIDS=$(ps aux | grep "[p]ython.*mitmdump.*$MITMPROXY_SCRIPT" | awk '{print $2}')
+    RULE=`iptables -t nat -S PREROUTING | grep -- "-j MITM"`
+
+    if [ ! -z "$PIDS" ] ; then
+        echo Capture using mitmproxy is started on the following PIDs: $PIDS
+        return 1
+    elif [ ! -z "$RULE" ] ; then
+        echo "Capture using mitmproxy is not started, but iptables rules present. Use 'stop' to fix"
+        return 0
+    else
+        echo "Capture using mitmproxy is not started"
+        return 0
+    fi
+}
+
+
+function mitm-stop()
+{
+    # Reset firewall rules
+    iptables -t nat -D PREROUTING -j MITM &> /dev/null
+    iptables -t nat -F MITM &> /dev/null
+    iptables -t nat -X MITM &> /dev/null
+
+    mitm-status &> /dev/null
+    if [ $? == "0" ]; then
+         echo "No mitmproxy instances found"
+    fi
+
+    # Kill existing mitmdump processes
+    PIDS=$(ps aux | grep "[p]ython.*mitmdump.*$MITMPROXY_SCRIPT" | awk '{print $2}')
+
+    if [ ! -z "$PIDS" ] ; then
+        echo Stopping existing mitmproxy instances: $PIDS
+        kill $PIDS
+    fi
+}
+
+function mitm-start()
+{
+    mitm-status &> /dev/null
+    if [ $? == "1" ]; then
+         echo "Failed: capture using mitmproxy is already started"
+         exit 1
+    fi
+
+    read -r -a monitored_interfaces <<< $MONITORED_INTERFACES
+    read -r -a network_names <<< $NETWORK_NAMES
+    read -r -a mitmproxy_ports <<< $MITMPROXY_LOCAL_PORTS
+
+    ALL_PORTS="$MITMPROXY_INTERCEPT_HTTP_PORTS $MITMPROXY_INTERCEPT_HTTPS_PORTS"
+    INTERCEPT_PORTS="${ALL_PORTS// /,}"
+
+    # Reset firwall rules
+    iptables -t nat -N MITM &> /dev/null
+    iptables -t nat -F MITM
+    iptables -t nat -D PREROUTING -j MITM &> /dev/null
+    iptables -t nat -A PREROUTING -j MITM
+
+    # Process all mitmproxy instances
+    for index in "${!network_names[@]}" ; do
+        NETWORK_NAME="${network_names[index]}"
+        MONITORED_INTERFACE="${monitored_interfaces[index]}"
+        MITMPROXY_PORT="${mitmproxy_ports[index]}"
+        LOG="$LOG_DIR/mitmproxy-$NETWORK_NAME.log"
+        FLOW="$MITM_TRAFFIC_DIR/flow-$NETWORK_NAME.log"
+        LAST_BOOT_FILENAME=`date --date="$LAST_BOOT" "+%Y-%m-%d"`
+        DUMP="$MITM_TRAFFIC_DIR/$LAST_BOOT_FILENAME-$NETWORK_NAME.mitm"
+        NETWORK_IP=`ip -o addr show $MONITORED_INTERFACE | grep -v inet6 | cut -d ' ' -f7`
+        echo "Starting mitmproxy instance for $MONITORED_INTERFACE on local port $MITMPROXY_PORT (intercepted ports: $ALL_PORTS)"
+        iptables -t nat -A MITM ! -d $NETWORK_IP -i $MONITORED_INTERFACE -p tcp -m tcp -m multiport --dports $INTERCEPT_PORTS -j REDIRECT --to-ports $MITMPROXY_PORT
+        mkdir -p $MITM_TRAFFIC_DIR
+
+        # Restart MITMPROXY automatically in case of crash
+        (
+            RULE=`iptables -t nat -S PREROUTING | grep -- "-j MITM"`
+            while [ ! -z "$RULE" ]; do
+                sleep 1
+                $MITMPROXY_MITMDUMP --set confdir="$MITMPROXY_CONF_DIR" -s "$MITMPROXY_SCRIPT" --set mitm_exception="$CURRENT_DIR/mitm-exception" \
+                    --set http_log_name="$FLOW" --set traffic_path="$MITM_TRAFFIC_EXPERIMENTS" --set network_name="$NETWORK_NAME" \
+                    --mode transparent -p $MITMPROXY_PORT -w +$DUMP --ssl-insecure >> $LOG 2>&1
+                RULE=`iptables -t nat -S PREROUTING | grep -- "-j MITM"`
+            done
+        ) &
+        disown
+    done
+
+    # Sync all existing devices
+    MACS=`iptables -t nat -S | grep -- "^-N ..:..:..:..:..:.." | cut -d ' ' -f2`
+    for MAC in $MACS; do
+        ( $CURRENT_DIR/mitm-exception sync $MAC &> /dev/null ) &
+        disown
+    done
+}
+
+if [ "$1" == "start" ]; then
+    mitm-start
+elif [ "$1" == "stop" ]; then
+    mitm-stop
+elif [ "$1" == "restart" ]; then
+    mitm-stop
+    sleep 1
+    mitm-start
+elif [ "$1" == "status" ]; then
+    mitm-status
+    exit $?
+else
+    help
+fi

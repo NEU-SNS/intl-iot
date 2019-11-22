@@ -1,0 +1,191 @@
+#!/bin/bash
+
+# This script manages DNS overrides.
+# Changes made by this script are persistent across restarts.
+
+CURRENT_DIR="$(dirname "$(readlink -f "$0")")"
+source $CURRENT_DIR/../lib/moniotr-constants
+
+COMMAND="$1"
+ID="$2"
+PARAM="$3"
+PARAM2="$4"
+DEST="$TRAFFIC_DIR/by-all/$ID"
+MAC_FILE=$DEST/$MAC_FILE
+DNSOVERRIDE_FILE=$DEST/$DNSOVERRIDE_FILE
+ME=$(basename $0)
+
+function usage()
+{
+    echo "Usage: $ME <add|del> <ID> <HOST> [<REDIRECT_IP>]"
+    echo "       $ME <sync|wipe|list> <ID>"
+}
+
+function help()
+{
+    echo "This script manages DNS redirections on a per-device basis."
+    echo "Changes made using this script are applied immediately and are persistent"
+    echo "across restarts."
+    echo
+    usage
+    echo
+    echo "add           Add or update a DNS override for a specific device."
+    echo
+    echo "del           Remove an existing DNS override for a specific device."
+    echo
+    echo "sync          Synchronizes DNS overrides for a specific device. This is needed the first time the"
+    echo "              device connects or in case of manual changes to the device configuration or to the DNS rules."
+    echo
+    echo "list          List all existing DNS overrides for a specific device."
+    echo
+    echo "wipe          Remove all existing DNS overrides for a specific device."
+    echo
+    echo "ID            Device identifier. It can be either a MAC Address, an IP Address, or the"
+    echo "              name of the device."
+    echo
+    echo "HOST          Hostname that will be overridden by the DNS."
+    echo
+    echo "REDIRECT_IP   IP returned from the DNS server when the client revolves the host. If this parameter is"
+    echo "              omitted, the default redirect IP is 127.0.0.1."
+    echo
+    echo "Examples: $ME add 11:22:33:44:55:66 google.com 151.1.1.1"
+    echo "          $ME del 11:22:33:44:55:66 google.com"
+    echo "          $ME sync 123.124.125.126"
+    exit
+}
+
+function add-dns-override()
+{
+    MAC=`cat $MAC_FILE`
+    [ -z "$3" ] && $3="127.0.0.1"
+    echo "Adding to $1 a new DNS override for $2 ($3)."
+    sed -i "/^$2/d" $DNSOVERRIDE_FILE
+    echo "$2 $3" >> $DNSOVERRIDE_FILE
+    sort -u $DNSOVERRIDE_FILE -o $DNSOVERRIDE_FILE
+}
+
+function del-dns-override()
+{
+    if [ ! -f "$DNSOVERRIDE_FILE" ] ; then
+        echo "Destination $1 does not have a valid $DNSOVERRIDE_FILE file. Aborting."
+        exit 1
+    fi
+    MAC=`cat $MAC_FILE`
+    echo "Removing from $1 a DNS override for $2."
+    sed -i "/^$2/d" $DNSOVERRIDE_FILE
+}
+
+function sync-dns-overrides()
+{
+    if [ ! -f "$DNSOVERRIDE_FILE" ] ; then
+        echo "Destination $1 does not have a valid $DNSOVERRIDE_FILE file. Aborting."
+        exit 1
+    fi
+
+    MAC=`cat $MAC_FILE`
+    RPZ_FILE="$NAMED_RPZ_DIR/$MAC.rpz"
+    SYNC_NEEDED="true"
+
+    # Create header
+    RPZ_CONTENT="\$TTL 60
+@            IN    SOA  localhost. root.localhost.  (
+                          2099111111   ; serial
+                          1h           ; refresh
+                          30m          ; retry
+                          1w           ; expiry
+                          30m)         ; minimum
+                   IN     NS    localhost.
+
+test.dns-override.net A 127.0.0.1"
+
+    # Create A records
+    while read in; do
+        if [[ "$in" =~ (.*)[[:space:]](.*) ]]; then
+            RPZ_CONTENT="$RPZ_CONTENT
+${BASH_REMATCH[1]} A ${BASH_REMATCH[2]}"
+        fi
+    done < "$DNSOVERRIDE_FILE"
+
+    # Read existing file
+    if [ -f "$RPZ_FILE" ]; then
+        OLD_RPZ_CONTENT=`cat $RPZ_FILE`
+        if [ "${RPZ_CONTENT//$'\n'/}" == "${OLD_RPZ_CONTENT//$'\n'/}" ]; then
+            SYNC_NEEDED="false"
+        fi
+    fi
+
+    if [ "$SYNC_NEEDED" == "true" ]; then
+        echo "$RPZ_CONTENT" > $RPZ_FILE
+        rndc reconfig
+    fi
+}
+
+function list-dns-overrides()
+{
+    if [ ! -f "$DNSOVERRIDE_FILE" ] ; then
+        echo "Destination $1 does not have a valid $DNSOVERRIDE_FILE file. Aborting."
+        exit 1
+    fi
+
+    echo "List of DNS override for $1"
+    while read in; do
+        if [[ "$in" =~ (.*)[[:space:]](.*) ]]; then
+            echo "   ${BASH_REMATCH[1]} -> ${BASH_REMATCH[2]}"
+        fi
+    done < "$DNSOVERRIDE_FILE"
+    echo "End of list"
+}
+
+function wipe-dns-override()
+{
+    MAC=`cat $MAC_FILE`
+    echo Permanenting removing DNS overrides associated with $1...
+    mv "$DNSOVERRIDE_FILE" "$DNSOVERRIDE_FILE.old"
+    touch "DNSOVERRIDE_FILE"
+    sync-dns-override $1
+}
+
+if [ "$DNS_OVERRIDE" != "true" ]; then
+    echo "This command is disabled because the DNS_OVERRIDE configuration option is not set to true."
+    exit 1
+fi
+
+if [[ -z "$COMMAND" ]] || [[ "$COMMAND" != "add" ]] && [[ "$COMMAND" != "del" ]] && [[ "$COMMAND" != "sync" ]] && \
+   [[ "$COMMAND" != "wipe" ]] && [[ "$COMMAND" != "list" ]]; then
+    help
+    exit
+fi
+
+if [[ -z "$ID" ]]; then
+    echo Destination not specified.
+    usage
+    exit 1
+fi
+
+if [[ -z "$PARAM" ]] && ( [[ "$COMMAND" == "del" ]] || [[ "$COMMAND" == "add" ]] ); then
+    echo Hostname not specified.
+    usage
+    exit 1
+fi
+
+if [ ! -f "$MAC_FILE" ] ; then
+    echo "Destination $ID does not exist or is not properly configured. Aborting."
+    exit 1
+fi
+
+
+if [[ "$COMMAND" == "add" ]]; then
+    add-dns-override $ID $PARAM $PARAM2
+    sync-dns-overrides $ID
+elif [[ "$COMMAND" == "del" ]]; then
+    del-dns-override $ID $PARAM
+    sync-dns-overrides $ID
+elif [[ "$COMMAND" == "sync" ]]; then
+    echo Syncing DNS overrides associated with $ID...
+    sync-dns-overrides $ID
+elif [[ "$COMMAND" == "wipe" ]]; then
+    wipe-dns-overrides $ID
+    sync-dns-overrides $ID
+elif [[ "$COMMAND" == "list" ]]; then
+    list-dns-overrides $ID
+fi
