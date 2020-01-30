@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ $# != 2 ]
+if [ $# != 1 ]
 then
-    echo "Usage: $0 list_exp.txt  tagged-intermediate/us"
+    echo "Usage: $0 list_exp.txt"
 #    echo "       e.g. $0 aux/list_tagged.txt /net/data/meddle/moniotr/tagged-intermediate"
 #    echo "       // e.g. find traffic/us/ -name *.pcap > list_exp.txt"
 #    echo "       Example in tagged-examples.txt"
@@ -10,7 +10,7 @@ then
 fi
 
 inputFile=$1
-dirIntermediate=$2
+dirIntermediate="tagged-intermediate/us"
 
 
 extract_pcap(){

@@ -137,7 +137,7 @@ if __name__ == "__main__":
   
   
   ipMap = IP.IPMapping()
-  ipMap.extractFromFile(options.hostsFile)
+  ipMap.extractFromFile(options.inputFile)
   ipMap.loadOrgMapping("aux/ipToOrg.csv")
   ipMap.loadCountryMapping("aux/ipToCountry.csv")
 
