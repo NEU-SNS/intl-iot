@@ -6,10 +6,10 @@ Download [Google Drive > sythetic.tgz](https://drive.google.com/open?id=1zGIGiVJ
 
 **Validation of symmetric.** To create some synthetic examples of encrypted vs. plaintext ASCII data sent over either TCP or UDP, we run a local server and a local client. For simplicity, we use python socket for the communication, and we collect local network traffic on the port 12345 (encrypted) and 12346 (plain) by using wireshark/tshark, usually it is the lo0 interface. 
 
-**Validation of various TLS ciphers.** we use python ssl library to test available cipher suites in a local machine. The list is not exhausted; from what we see, the variance is relatively small. 
+**Validation of various TLS ciphers.** We use the Python SSL library to test available cipher suites in a local machine. The list is not exhausted; from what we see, the variance is relatively small. 
 
 ### Symmetric Encryption Traffic Sampling 
-All the data has been generated to the `synthetic/` folder. If you want to add more experiments, follow steps for plain/encrypted traffic generation to add support for more encryption schemes and protocols. 
+All the data has been generated to the `synthetic/` directory. If you want to add more experiments, follow steps for plain/encrypted traffic generation to add support for more encryption schemes and protocols. 
 
 **Plain Traffic Generation**
 1. Run the local server: `python socket_server.py 12346`
