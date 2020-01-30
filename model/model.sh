@@ -4,7 +4,6 @@ if [ $# != 1 ]
 then
 	echo "Usage: $0 raw_list"
 	echo "  raw_list: Text file containing a list of the paths to pcap files to analyze"
-	echo "    (list_exp.txt in this example)"
 	exit 0
 fi
 
