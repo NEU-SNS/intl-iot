@@ -3,7 +3,11 @@ import os
 import pandas as pd
 
 def main():
-    list_csv = load_list('slist.txt')
+    slist = 'slists.txt'
+    if not os.path.exists(slist):
+        print("The file %s does not exist."%slist)
+        sys.exit()
+    list_csv = load_list(slist)
     print(list_csv)
     run(list_csv)
 
