@@ -10,31 +10,67 @@ from scipy.stats import kurtosis
 from scipy.stats import skew
 from statsmodels import robust
 dir_online_features = 'online_features'
-columns_intermediate = ['frame_no','ts', 'ts_delta','protocols', 'frame_len', 'eth_src', 'eth_dst',
+columns_intermediate = ['frame_no', 'ts', 'ts_delta','protocols', 'frame_len', 'eth_src', 'eth_dst',
                         'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport', 'http_host', 'sni', 'udp_srcport', 'udp_dstport']
 columns_state_features = [ "meanBytes", "minBytes", "maxBytes", "medAbsDev", "skewLength", "kurtosisLength",
                            "q10", "q20", "q30", "q40", "q50", "q60", "q70", "q80", "q90", "spanOfGroup",
                            "meanTBP", "varTBP", "medianTBP", "kurtosisTBP", "skewTBP", "device", "state"]
-columns_detect_sequence = ['ts', 'ts_end','ts_delta', 'num_pkt', 'state']
-save_extracted_features=False
+columns_detect_sequence = ['ts', 'ts_end', 'ts_delta', 'num_pkt', 'state']
+save_extracted_features = False
+
+def usage():
+    print("Usage: python3 %s device_name intermediate_file result_file model_dir use_intermediate\n" % os.path.basename(__file__))
+    print("Uses a model to predict the amount of device activity that can be inferred from a decoded pcap file.\n")
+    print("Example: python3 -W ignore %s yi-camera /tmp/3b986fce33742216b5f4d8d2e427766d.txt sample-result.csv tagged-models/us/\n" % os.path.basename(__file__))
+    print("Arguments:")
+    print("  device_name: The name of the device that the decoded pcap file contains network traffic of")
+    print("  intermediate_file: Path to the decoded, human-readable pcap file")
+    print("  result_file: Path to a CSV file to write results")
+    print("  model_dir: Path to the directory containing the model of the device that the decoded pcap file samples")
+    print("  use_intermediate: ???\n")
+    print("Note: This script is called by predict.sh and not by the user in the content analysis pipeline.")
+    exit(0)
 
 def main():
     global dir_models
-    if len(sys.argv) < 5:
-        print('Usage: %s device intermediateFile resultcsvFile dir_models useIntermediate=1|0' % sys.argv[0])
-        print('\tdefault dir_models=%s' % dir_models)
-        exit(0)
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        print("\033[31mError: 4 arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
+        usage()
+
     device = sys.argv[1]
     file_intermediate = sys.argv[2]
     file_result = sys.argv[3]
     dir_models = sys.argv[4]
-    useIntermediate=1
+    useIntermediate = 1
     if len(sys.argv) > 5:
         useIntermediate = int(sys.argv[5])
 
-    res=predict(device, file_intermediate)
+    errors = False
+    if not os.path.isfile(file_intermediate):
+        print("\033[31mError: Intermediate file %s does not exist!\033[39m" % file_intermediate)
+        errors = True
+    if not file_result.endswith('.csv'):
+        print("\033[31mError: Output file %s should be a CSV!\033[39m" % file_result)
+        errors = True
+    if not os.path.isdir(dir_models):
+        print("\033[31mError: The model directory %s does not exist!\033[39m" % dir_models)
+        errors = True
+    else:
+        file_model = '%s/%s.model' % (dir_models, device)
+        file_labels = '%s/%s.label.txt' % (dir_models, device)
+        if not os.path.isfile(file_model):
+            print("\033[31mError: The model file %s cannot be found. Please regenerate file, ccheck directory name, or check device name.\033[39m" % file_model)
+            errors = True
+        if not os.path.isfile(file_labels):
+            print("\033[31mError: The label file %s cannot be found. Please regenerate file, check directory name, or check device name.\033[39m" % file_labels)
+            errors = True
 
-    if res is None or len(res)==0:
+    if errors:
+        usage()
+
+    res = predict(device, file_intermediate)
+
+    if res is None or len(res) == 0:
         with open(file_result, 'w') as ff:
             ff.write('No behavior found for %s from %s' % (device, file_intermediate))
     else:
@@ -48,7 +84,7 @@ def predict(device, file_intermediate):
     if model is None:
         return
     res_detect = detect_states(file_intermediate, model, labels, device)
-    print('Result:')
+    print('Results:')
     print(res_detect)
     return res_detect
 
@@ -69,7 +105,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     # print(pd_obj_all.head())
     # print('')
     pd_obj = pd_obj_all.loc[:, ['ts', 'ts_delta', 'frame_len']]
-    if pd_obj is None or len(pd_obj) < 1:
+    if pd_obj is None or len(pd_obj) < 1: #Nothing in decoded input pcap file
         return
     num_total = len(pd_obj_all)
     print('Total packets: %s' % num_total)
@@ -90,9 +126,9 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     Load sessions, for each session, extract features and construct a dataframe of feature
     """
     print('Number of slices: %s' % len(list_sessions))
-    for i in range(len(list_sessions)-1):
+    for i in range(len(list_sessions) - 1):
         start = list_sessions[i]
-        stop = list_sessions[i+1]
+        stop = list_sessions[i + 1]
         pd_obj = pd_obj_all.iloc[start: stop]
         if len(pd_obj) < group_size:
             # print('error: %s,%s' % (start, stop))
@@ -108,7 +144,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
         list_start_ts_text.append('%s (%s) n=%s' % (start_ts, start_ts_delta, len(pd_obj)))
 
         end_ts = pd_obj.iloc[num_pkt - 1].ts
-        list_res.append([start_ts, end_ts, start_ts_delta, num_pkt])
+        list_res.append([start_ts, end_ts, start_ts_delta, num_pkt]) #The results that are printed
         d = compute_tbp_features(pd_obj, np.NaN, np.NaN)
         d.extend([start_ts, end_ts, start_ts_delta, num_pkt])
         feature_data = feature_data.append(pd.DataFrame(data=[d], columns=c))
@@ -137,7 +173,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     # print('ypredict:')
     # print(y_predict)
     p_readable = []
-    theta=0.7
+    theta = 0.7
     # print( y_predict.ndim, 'ndim: ')
     # if y_predict.ndim == 1:
     #     return
@@ -219,7 +255,7 @@ def load_model(dname):
     file_model = '%s/%s.model' % (dir_models, dname)
     file_labels = '%s/%s.label.txt' % (dir_models, dname)
     if os.path.exists(file_model) and os.path.exists(file_labels):
-        print(file_model)
+        print("Model: %s" % file_model)
         model = pickle.load(open(file_model, 'rb'))
         labels = load_list(file_labels)
         return model, labels

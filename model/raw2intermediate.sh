@@ -1,62 +1,97 @@
 #!/bin/bash
 
-if [ $# != 1 ]
-then
-    echo "Usage: $0 list_exp.txt"
+usage() {
+    echo -e "Usage: $0 exp_list out_intermediate_dir\n"
+    echo -e "Decodes raw data in pcap files into human-readable text files.\n"
+    echo -e "Example: $0 list_exp.txt tagged-intermediate/us/\n"
+    echo "Arguments:"
+    echo "  exp_list: A text file containing the file paths to pcap files to decode"
+    echo "  out_intermediate_dir: Path to the directory to place the human-readable raw decoded output text files"
+
 #    echo "       e.g. $0 aux/list_tagged.txt /net/data/meddle/moniotr/tagged-intermediate"
 #    echo "       // e.g. find traffic/us/ -name *.pcap > list_exp.txt"
 #    echo "       Example in tagged-examples.txt"
     exit 0
+}
+
+#Check for 2 arguments
+if [ $# != 2 ]
+then
+    echo -e "\e[31mError: 2 arguments required. $# arguments found.\e[39m"
+    usage
 fi
 
 inputFile=$1
-dirIntermediate="tagged-intermediate/us"
+dirIntermediate=$2
 
+#Check that exp_list is a .txt file and exists
+if [[ $1 != *.txt ]]
+then
+    echo -e "\e[31mError: Input file must be a text file (.txt). Received $1\e[39m"
+    usage
+elif ! [ -e $inputFile ]
+then
+    echo -e "\e[31Error: The input file $inputFile does not exist.\e[39m"
+fi
 
-extract_pcap(){
+echo -e "\nTranslating raw pcaps into human-readable form..."
+
+extract_pcap() {
     pcap_file=$1
     txt_file=$2
 
+    #If output file exists, nothing happens
     if [ -e ${txt_file} ]
     then
         echo "${txt_file} exists, delete it to re-parse!"
         return
     fi
 
+    #Decode pcap file
     tshark -r ${pcap_file} -Y ip -Tfields -e frame.number -e frame.time_epoch -e frame.time_delta -e frame.protocols -e frame.len -e eth.src -e eth.dst -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e http.host -e ssl.handshake.extensions_server_name -e udp.srcport -e udp.dstport -E separator=/t > ${txt_file} 2>/dev/null
 
-
+    #Check if tshark worked
     if ! [ -s ${txt_file} ]
     then
         echo "Empty file ${txt_file}, removing..."
         rm -v ${txt_file}
+	echo
     else
         head -3 ${txt_file}
         wc -l ${txt_file}
         echo
     fi
-
 }
 
 while read line
 do
-    echo $line
-    dname=`dirname $line`
-    fname=`basename $line`
-    fname=${fname%pcap}txt
-    expName=`basename $dname`
-    devicedir=`dirname $dname`
-    deviceName=`basename $devicedir`
-
-    dirTarget=${dirIntermediate}/${deviceName}/${expName}
-    mkdir -p $dirTarget
-
-    fileIntermediate=${dirTarget}/$fname
-    if ! [ -e $fileIntermediate ]
+    #Check that files in input file exist and are .pcap files
+    if ! [ -e $line ]
     then
-        echo "extract_pcap $line $fileIntermediate"
-        extract_pcap $line $fileIntermediate
+        echo -e "\e[31mThe file $line does not exist!\e[39m\n"
+    elif ! [[ $line == *.pcap ]]
+    then
+        echo -e "\e[31mThe file $line is not a .pcap file!\e[39m\n"
     else
-        echo  "$fileIntermediate exists."
+        #Parse pcap file name
+        dname=`dirname $line`
+        fname=`basename $line`
+        fname=${fname%pcap}txt
+        expName=`basename $dname`
+        devicedir=`dirname $dname`
+        deviceName=`basename $devicedir`
+
+        dirTarget=${dirIntermediate}/${deviceName}/${expName}
+        mkdir -p $dirTarget
+
+        fileIntermediate=${dirTarget}/$fname #output files
+        #Nothing happens if output file exists
+        if ! [ -e $fileIntermediate ]
+        then
+            echo "Decoding $line into $fileIntermediate"
+            extract_pcap $line $fileIntermediate
+        else
+            echo "$fileIntermediate exists."
+        fi
     fi
 done < $inputFile
