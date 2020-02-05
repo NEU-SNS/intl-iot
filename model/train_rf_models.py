@@ -9,41 +9,66 @@ from sklearn.metrics import accuracy_score
 
 import warnings
 warnings.simplefilter("ignore", category=DeprecationWarning)
-root_feature = 'features/us'
-root_model='tagged-models/us'
-output_file=root_model+'/output/train-models.txt'
+root_feature = ''
+root_model = ''
+output_file = root_model + '/output/train-models.txt'
+
+def usage():
+    print("Usage: python %s in_features_dir out_model_dir\n" % os.path.basename(__file__))
+    print("Trains analyzed pcap files and produces a model that can predict device activities.\n")
+    print("Example: %s features/us/ tagged-models/us/\n" % os.path.basename(__file__))
+    print("Arguments:")
+    print("  in_features_dir: Path to a directory containing CSV files of statistically-analyzed pcap files")
+    print("  out_model_dir: Path to the directory to put the generated model")
 
 def main():
     test()
     global root_feature, root_model, output_file
-    if len(sys.argv) == 3:
-        root_feature = sys.argv[1]
-        root_model = sys.argv[2]
-        output_file = root_model + '/output/train-models.txt'
-    diroutput=root_model+'/output'
+
+    if len(sys.argv) != 3:
+        print("\033[31mError: 2 Arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
+        usage()
+        return 0
+    if not os.path.isdir(sys.argv[1]):
+        print("\033[31mError: Input directory %s does not exist!\033[39m" % sys.argv[1])
+        usage()
+        return 0
+
+    print("\nTraining data and creating model...")
+
+    root_feature = sys.argv[1]
+    root_model = sys.argv[2]
+    output_file = root_model + '/output/train-models.txt'
+    diroutput = root_model + '/output'
     if not os.path.exists(diroutput):
         os.system('mkdir -pv %s' % diroutput)
     train_models()
 
-
 def train_models():
     global root_feature, root_model, output_file
-    ff = open(output_file, 'a+')
+    
+    output = '' #Concatenation of device accuracy scores to be put in output_file
+
+    #Each device has its own CSV file in the input directory
     for csv_file in os.listdir(root_feature):
         if csv_file.endswith('.csv'):
             train_data_file = '%s/%s' % (root_feature, csv_file)
-            print("Scanning " + train_data_file)
             dname = csv_file[:-4]
             model_file = '%s/%s.model' % (root_model, csv_file[:-4])
             label_file = '%s/%s.label.txt' % (root_model, csv_file[:-4])
             res_file = model_file[:-6] + '_eval.txt'
-            if os.path.exists(model_file) or not os.path.exists(train_data_file):
-                print('  Skip trained %s' % model_file)
-                continue
-            _acc_score = train_individual_device(train_data_file, model_file, label_file, res_file)
-            ff.write('%s\t%s\n' % (dname, _acc_score))
-    ff.close()
-    print('acc score saved to %s' % output_file)
+            if os.path.exists(model_file) and os.path.exists(output_file) and os.path.exists(label_file):
+                print('Output already produced for %s' % dname)
+            elif not os.path.exists(train_data_file):
+                print("Input file %s does not exist!" % train_data_file)
+            else:
+                print("Scanning " + train_data_file)
+                _acc_score = train_individual_device(train_data_file, model_file, label_file, res_file)
+                output = output + dname + '\t' + str(_acc_score) + '\n'
+                ff = open(output_file, 'w')
+                ff.write(output)
+                ff.close()
+    print('Accuracy scores saved to %s' % output_file)
 
 def train_individual_device(train_data_file, model_file, label_file, res_file=None):
     # FutureWarning
@@ -58,7 +83,7 @@ def train_individual_device(train_data_file, model_file, label_file, res_file=No
     train_data = pd.read_csv(train_data_file)
     if len(train_data) < 1:
         return
-    print('  #Data points: %d '%len(train_data))
+    print('  Data points: %d '%len(train_data))
     feature_data = train_data.drop(['device', 'state'], axis=1).fillna(-1)
     device = np.array(train_data.device)[0]
     y_labels = np.array(train_data.state)
@@ -82,11 +107,11 @@ def train_individual_device(train_data_file, model_file, label_file, res_file=No
     for pair in feature_importances:
         print('\tVariable: {:20} Importance: {}'.format(*pair))
     pickle.dump(rf, open(model_file, 'wb'))
-    print('  model -> %s' % (model_file))
+    print('  Model -> %s' % (model_file))
     unique_labels = lb.classes_.tolist()
     open(label_file, 'w').write('%s\n' % '\n'.join(unique_labels))
-    print('  labels -> %s' % label_file)
-    print ('    accuracy: %s' % res_acc)
+    print('  Labels -> %s' % label_file)
+    print ('  Accuracy: %s' % res_acc)
     return res_acc
 
 
