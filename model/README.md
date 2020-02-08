@@ -16,5 +16,5 @@ Download [Google Drive > iot-model.tgz](https://drive.google.com/open?id=1lMqZ5q
 `model.sh` is an equivalent to the Jupyter Notebook, which can be run directly in the terminal. To ananalyze the example data provided, run the following command:
 
 ```
-./model.sh list_exp.txt
+./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv
 ```
