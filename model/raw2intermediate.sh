@@ -14,6 +14,9 @@ usage() {
     exit 0
 }
 
+echo -e "\nTranslating raw pcaps into human-readable form..."
+echo "Running raw2intermediate.sh..."
+
 #Check for 2 arguments
 if [ $# != 2 ]
 then
@@ -33,8 +36,6 @@ elif ! [ -e $inputFile ]
 then
     echo -e "\e[31Error: The input file $inputFile does not exist.\e[39m"
 fi
-
-echo -e "\nTranslating raw pcaps into human-readable form..."
 
 extract_pcap() {
     pcap_file=$1

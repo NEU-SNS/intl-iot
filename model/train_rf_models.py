@@ -25,6 +25,9 @@ def main():
     test()
     global root_feature, root_model, output_file
 
+    print("\nTraining data and creating model...")
+    print("Running train_rf_models.py...")
+
     if len(sys.argv) != 3:
         print("\033[31mError: 2 Arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
         usage()
@@ -33,8 +36,6 @@ def main():
         print("\033[31mError: Input directory %s does not exist!\033[39m" % sys.argv[1])
         usage()
         return 0
-
-    print("\nTraining data and creating model...")
 
     root_feature = sys.argv[1]
     root_model = sys.argv[2]

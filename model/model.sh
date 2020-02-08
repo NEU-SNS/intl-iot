@@ -49,15 +49,16 @@ check_args() {
 }
 
 run_pipeline() {
-    echo "Running content analysis pipeline"
-
     ./raw2intermediate.sh $exp_list $intermediate_dir
     python extract_tbp_features.py $intermediate_dir $features_dir
     python train_rf_models.py $features_dir $model_dir
-    ./predict.sh $device_name $pcap_path $result_path $model_dir
+    python3 -W ignore predict.py $device_name $pcap_path $result_path $model_dir
 
     echo -e "\nContent analysis finished."
 }
+
+echo "Performing content analysis pipeline..."
+echo "Running model.sh..."
 
 num_args=$#
 exp_list=$1

@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import time
 import warnings
+import ntpath
 from sklearn.preprocessing import LabelEncoder
 from scipy.stats import kurtosis
 from scipy.stats import skew
@@ -19,35 +20,38 @@ columns_detect_sequence = ['ts', 'ts_end', 'ts_delta', 'num_pkt', 'state']
 save_extracted_features = False
 
 def usage():
-    print("Usage: python3 %s device_name intermediate_file result_file model_dir use_intermediate\n" % os.path.basename(__file__))
-    print("Uses a model to predict the amount of device activity that can be inferred from a decoded pcap file.\n")
-    print("Example: python3 -W ignore %s yi-camera /tmp/3b986fce33742216b5f4d8d2e427766d.txt sample-result.csv tagged-models/us/\n" % os.path.basename(__file__))
+    print("Usage: python3 %s device_name pcap_path result_file model_dir\n" % os.path.basename(__file__))
+    print("Uses a model to predict the amount of device activity that can be inferred from a pcap file.\n")
+    print("Example: python3 -W ignore %s yi-camera sample-yi-camera-recording.pcap sample-result.csv tagged-models/us/\n" % os.path.basename(__file__))
     print("Arguments:")
     print("  device_name: The name of the device that the decoded pcap file contains network traffic of")
-    print("  intermediate_file: Path to the decoded, human-readable pcap file")
+    print("  pcap_path Path to the network activity in a pcap file")
     print("  result_file: Path to a CSV file to write results")
     print("  model_dir: Path to the directory containing the model of the device that the decoded pcap file samples")
-    print("  use_intermediate: ???\n")
-    print("Note: This script is called by predict.sh and not by the user in the content analysis pipeline.")
     exit(0)
 
 def main():
     global dir_models
+
+    print("\nPredicting amout of inferable device activity from pcap file...")
+    print("Running predict.py...")
+
     if len(sys.argv) != 4 and len(sys.argv) != 5:
         print("\033[31mError: 4 arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
         usage()
 
     device = sys.argv[1]
-    file_intermediate = sys.argv[2]
+    pcap_path = sys.argv[2]
+    user_intermediates = "user-intermediates/"
     file_result = sys.argv[3]
     dir_models = sys.argv[4]
-    useIntermediate = 1
-    if len(sys.argv) > 5:
-        useIntermediate = int(sys.argv[5])
 
     errors = False
-    if not os.path.isfile(file_intermediate):
-        print("\033[31mError: Intermediate file %s does not exist!\033[39m" % file_intermediate)
+    if not pcap_path.endswith('.pcap'):
+        print("\033[31mError: %s is not a pcap file.\033[39m" % pcap_path)
+        errors = True
+    elif not os.path.isfile(pcap_path):
+        print("\033[31mError: The pcap file %s does not exist!\033[39m" % pcap_path)
         errors = True
     if not file_result.endswith('.csv'):
         print("\033[31mError: Output file %s should be a CSV!\033[39m" % file_result)
@@ -68,6 +72,15 @@ def main():
     if errors:
         usage()
 
+    if not os.path.exists(user_intermediates):
+        os.system('mkdir -pv %s' % user_intermediates)
+    file_intermediate = user_intermediates + "/" + ntpath.basename(pcap_path)[:-4] + "txt"
+    if os.path.isfile(file_intermediate):
+        print("%s exists. Delete it to reparse the pcap file." % file_intermediate)
+    else:
+        os.system("tshark -r %s -Y ip -Tfields -e frame.number -e frame.time_epoch -e frame.time_delta -e frame.protocols -e frame.len -e eth.src -e eth.dst -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e http.host -e ssl.handshake.extensions_server_name -e udp.srcport -e udp.dstport -E separator=/t > %s 2>/dev/null" % (pcap_path, file_intermediate))
+
+    os.system('mkdir -pv `dirname %s`' % file_result)
     res = predict(device, file_intermediate)
 
     if res is None or len(res) == 0:
