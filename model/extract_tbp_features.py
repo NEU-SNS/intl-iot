@@ -36,6 +36,9 @@ def usage():
 
 def main():
     global root_exp, root_feature
+    
+    print("\nPerforming statistical analysis...")
+    print("Running extract_tbp_features.py...")
 
     if len(sys.argv) != 3:
         print("\033[31mError: 2 Arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
@@ -45,8 +48,6 @@ def main():
         print("\033[31mError: Input directory %s does not exist!\033[39m" % sys.argv[1])
         usage()
         return 0
-
-    print("\nPerforming statistical analysis...")
 
     root_exp = sys.argv[1]
     root_feature = sys.argv[2]

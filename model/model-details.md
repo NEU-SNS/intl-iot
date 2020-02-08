@@ -58,33 +58,19 @@ Input:
 Output:
 The script will generate three files for each device. One file contains the model, which can be used to predict device activity. A second file contains a list of experiment types. These two files are used in the next step of the pipeline. A third file contains the training accuracy scores for each device. If a device already has these three files in the output directory, they will not be regenerated. However, if one or more of those files are missing, they will be regenerated.
 
-### predict.sh
-Usage: ./predict.sh device_name pcap_path result_path model_dir
+### predict.py
+Usage: python3 predict.py device_name pcap_path result_file model_dir use_intermediate
 
-This script predicts the amount of device activity that can be inferred based on the network traffic of that device.
+The script uses a model to predict the amount of device activity that can be inferred from a pcap file.
 
 Input:
   device_name: The name of the device that the pcap file contains network traffic of.
   pcap_path: Path to the network activity in a pcap file.
   result_path: Path to a CSV file to write results.
-  model_dir: The directory containing the model of the device that the pcap file samples.
-
-Output:
-The script checks that the input files and directories are valid. The script will then decode the input pcap file and store the data in a file called \tmp\{md5}.txt. If this file exists, a new file will not be generated. The script then calls predict.py to predict the amount of device activity that can be inferred given this decoded file.
-
-### predict.py
-Usage: python3 predict.py device_name intermediate_file result_file model_dir use_intermediate
-
-The script uses a model to predict amount of device activity that can be inferred from a decoded pcap file. In the content analysis pipeline, this script is called by predict.sh, not by the user.
-
-Input:
-  device_name: The name of the device that the pcap file contains network traffic of.
-  intermediate_path: Path to the decoded, human-readable pcap file.
-  result_path: Path to a CSV file to write results.
   model_dir: The path to the directory containing the model of the device that the decoded pcap file samples.
 
 Output:
-The script outputs a CSV file containing the predictions made by the model. If the output file already exists, the script will overwrite the file.
+The script decodes the input pcap file and stores the decoded data in a user-intermediates/ directory. If a file containing the decoded data already exists, the file will not be regenerated. The script then outputs a CSV file containing the predictions made by the model and the decoded data. If the output file already exists, the script will overwrite the file.
 
 ## Non-scripts
 
