@@ -65,6 +65,8 @@ class GraphDesc(object):
 
 if __name__ == "__main__":
   gd = GraphDesc()
+
+  #Add options to usage statement
   usage = "usage: %prog [options] arg1 arg2"
   parser = OptionParser(usage, version="%prog 0.1")
   parser.add_option("-i", "--inputFile", dest="inputFile", help="Input File")
@@ -92,8 +94,7 @@ if __name__ == "__main__":
   parser.add_option("--findDiff", dest="findDiff", action="store_true", default=False,
       help="Find domains which do not reply.")
 
-
-
+  #Add options to graph
   graphParser = OptionGroup(parser, "Graph Options")
 
   graphParser.add_option("-g", "--graph", dest="plot", action="callback",
@@ -103,7 +104,8 @@ if __name__ == "__main__":
   
   parser.add_option_group(graphParser)
 
-  (options, args) = parser.parse_args()
+  (options, args) = parser.parse_args() #Parse arguments
+
   if options.hostsFile == "":
     options.hostsFile = options.inputFile
   
@@ -147,7 +149,7 @@ if __name__ == "__main__":
   if options.findDiff:
     de.loadDiffIPFor("eth")
   else:
-   de.loadIPFor("eth")
+    de.loadIPFor("eth")
   de.loadDomains()
   de.exportDataRows(options.outputFile)
   #sys.exit()

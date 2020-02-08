@@ -13,7 +13,7 @@ class IPResolver(object):
     self.ipCity = geoip2.database.Reader('./geoipdb/GeoLite2-City.mmdb')
     self.ipCountry = geoip2.database.Reader('./geoipdb/GeoLite2-Country.mmdb')
     self.ipMap = ipMapping
-    self.ripeProbe = RipeProbe()
+    #self.ripeProbe = RipeProbe()
 
   def getCountryAndCity(self, ip):
     try:
