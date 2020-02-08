@@ -33,7 +33,7 @@ def usage():
 def main():
     global dir_models
 
-    print("\nPredicting amout of inferable device activity from pcap file...")
+    print("\nPredicting amount of inferable device activity from pcap file...")
     print("Running predict.py...")
 
     if len(sys.argv) != 4 and len(sys.argv) != 5:
