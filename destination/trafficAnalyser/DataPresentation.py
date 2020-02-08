@@ -32,7 +32,9 @@ class PlotManager(object):
         self.generatePiePlot(plot, plot.plot)
 
       self.subPlotCounter += 1 
-    
+   
+    if not os.path.isdir("figures"):
+        os.system('mkdir -pv figures/')
     plt.savefig(os.path.join(self.options.figDir, 
           self.sanitiseFileName(self.options.inputFile)))
     #plt.show()
@@ -193,13 +195,14 @@ class PiePlot(DataPresentation):
     super().__init__(stats, plot)
     self.ipResolver = IP.IPResolver(ipMapping)
 
-  def splitIPBy(self, layer, method, field = "addrPacketSize", reset = False):
+  def splitIPBy(self, layer, method, field="addrPacketSize", reset = False):
     if reset:
       self.dataDict = {}
-    
+
+    print(type(self.stats[layer]), field)
     try:
       ipDict = getattr(self.stats[layer], field)
-      #print(layer, field, ipDict)
+      print(layer, field, ipDict)
       self.dataDict[layer] = {}
       self.ipResolver.splitIPBy(ipDict, method, self.dataDict[layer])
     except KeyError as err:
