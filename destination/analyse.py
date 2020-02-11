@@ -21,6 +21,7 @@ __maintainer__ = "Roman Kolcun"
 __email__ = "roman.kolcun@imperial.ac.uk"
 __status__ = "Development"
 
+
 class GraphDesc(object):
   
   def __init__(self):
@@ -96,7 +97,7 @@ if __name__ == "__main__":
 
   #Add options to graph
   graphParser = OptionGroup(parser, "Graph Options")
-
+  
   graphParser.add_option("-g", "--graph", dest="plot", action="callback",
       type="string", callback=gd.parseGraphOptions,
       help="Type of graph.")
@@ -105,7 +106,7 @@ if __name__ == "__main__":
   parser.add_option_group(graphParser)
 
   (options, args) = parser.parse_args() #Parse arguments
-
+  
   if options.hostsFile == "":
     options.hostsFile = options.inputFile
   
@@ -158,7 +159,7 @@ if __name__ == "__main__":
 
   pm = DataPresentation.PlotManager(nodeStats.stats.stats, gd, options)
   pm.ipMap = ipMap
-  pm.generatePlot()
+  pm.generatePlot(options.figDir)
   
   Utils.sysUsage("Plots generated")
 
