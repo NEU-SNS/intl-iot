@@ -16,14 +16,13 @@ class PlotManager(object):
     for gd in self.gd.graphs:
       print (gd)
 
-  def generatePlot(self):
+  def generatePlot(self, figDir):
     
     plt.figure(figsize=(20,20))
     plt.title(self.options.inputFile)
 
     for plot in self.gd.graphs:
       plt.subplot(len(self.gd.graphs), 1, self.subPlotCounter)
-
       if plot.plot == "StackPlot":
         self.generateStackPlot(plot)
       elif plot.plot in ["LinePlot", "ScatterPlot", "BarPlot"]:
@@ -33,8 +32,8 @@ class PlotManager(object):
 
       self.subPlotCounter += 1 
    
-    if not os.path.isdir("figures"):
-        os.system('mkdir -pv figures/')
+    if not os.path.isdir(figDir):
+        os.system('mkdir -pv %s' % figDir)
     plt.savefig(os.path.join(self.options.figDir, 
           self.sanitiseFileName(self.options.inputFile)))
     #plt.show()
@@ -195,21 +194,29 @@ class PiePlot(DataPresentation):
     super().__init__(stats, plot)
     self.ipResolver = IP.IPResolver(ipMapping)
 
-  def splitIPBy(self, layer, method, field="addrPacketSize", reset = False):
+  def splitIPBy(self, layer, method, field = "addrPacketSize", reset = False):
     if reset:
       self.dataDict = {}
 
-    print(type(self.stats[layer]), field)
     try:
+      if field == None:
+          field = "addrPacketSize"
       ipDict = getattr(self.stats[layer], field)
-      print(layer, field, ipDict)
+      #print(layer, field, ipDict)
       self.dataDict[layer] = {}
       self.ipResolver.splitIPBy(ipDict, method, self.dataDict[layer])
     except KeyError as err:
       print ("{}: There is no traffic for protocol {}".format(__class__, layer))
 
   def plotFig(self):
-    self.plot.pie(list(self.dataDict.values()), labels=list(dict.keys(self.dataDict)), autopct='%1.1f%%')
+      print(self.dataDict)
+      print(list(self.dataDict.values())[0].values())
+      print(self.dataDict.values())
+      print("\n")
+      print(len(list(dict.keys(self.dataDict))))
+      print(len(list(list(self.dataDict.values())[0].values())))
+      print(len(list(list(self.dataDict.values())[1].values())))
+      self.plot.pie(list(list(self.dataDict.values())[0].values()), labels=list(dict.keys(self.dataDict)), autopct='%1.1f%%')
 
 
 class BarHPlot(PiePlot):
