@@ -1,12 +1,14 @@
 """ Scripts processing pcap files and generating text output and figures """
 
-
+import os
 import sys
 import pyshark
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
+
+import re
 
 from trafficAnalyser import *
 
@@ -21,9 +23,55 @@ __maintainer__ = "Roman Kolcun"
 __email__ = "roman.kolcun@imperial.ac.uk"
 __status__ = "Development"
 
+usage_stm = """
+Usage: analyse.py [options] arg1 arg2
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -i INPUTFILE, --inputFile=INPUTFILE
+                        Input File
+  -m MACADDR, --mac=MACADDR
+                        MAC Address of the device.
+  -a IPADDR, --ip=IPADDR
+                        IP Address of the device.
+  -f FIGDIR, --figDir=FIGDIR
+                        Directory to save figures.
+  -t, --noTimeShift     Do not perform time shift.
+  -s HOSTSFILE, --hostsFile=HOSTSFILE
+                        File produced by tshark extracting hosts from the
+                        pcacp file.
+  -d DEVICE, --device=DEVICE
+                        Device name.
+  -b LAB, --lab=LAB     Lab name.
+  -e EXPERIMENT, --experiment=EXPERIMENT
+                        Experiment name.
+  -n NETWORK, --network=NETWORK
+                        Network name.
+  -o OUTPUTFILE, --outputFile=OUTPUTFILE
+                        Output CSV file.
+  -c DEVICELIST, --deviceList=DEVICELIST
+                        List containing all devices.
+  --findDiff            Find domains which do not reply.
+
+  Graph Options:
+    -g PLOT, --graph=PLOT
+                        Type of graph.
+    -l IPLOC, --ipLoc=IPLOC
+                        How IP should be translated to a location or a domain
+                        name
+    -p PROTOCOL, --protocol=PROTOCOL
+                        Which protocols should be analysed
+    -r IPATTR, --ipAttr=IPATTR
+                        When showing domains/IPs/countries should the number
+                        of packet or overall traffic be shown
+"""
+
+def print_usage():
+    print(usage_stm)
+    exit()
 
 class GraphDesc(object):
-  
   def __init__(self):
     self.graphs = []
     usage = "usage:"
@@ -107,14 +155,54 @@ if __name__ == "__main__":
 
   (options, args) = parser.parse_args() #Parse arguments
   
+  done = False
+  if options.inputFile == None:
+      print("\033[31mError: Pcap input file required.\033[39m")
+      done = True
+  elif not options.inputFile.endswith(".pcap"):
+      print("\033[31mError: Pcap input file required. Received \"%s\"\033[39m" % options.inputFile)
+      done = True
+  elif not os.path.isfile(options.inputFile):
+      print("\033[31mError: The input file \"%s\" does not exist.\033[39m" % options.inputFile)
+      done = True
+
   if options.hostsFile == "":
     options.hostsFile = options.inputFile
   
-  devices = Device.Devices(options.deviceList)
- 
-  if options.macAddr == "":
-    options.macAddr = devices.getDeviceMac(options.device)
+  noMACDevice = False
+  validDeviceList = True
+  if options.macAddr == "" and options.device == "":
+      print("\033[31mError: Either the MAC address (-m) or device (-d) must be specified.\033[39m")
+      done = True
+      noMACDevice = True
+  else:
+    if options.macAddr == "":
+        if not options.deviceList.endswith(".txt"):
+            print("\033[31mError: Device list must be a text file (.txt). Received \"%s\"\033[39m" % options.deviceList)
+            done = True
+            validDeviceList = False
+        elif not os.path.isfile(options.deviceList):
+            print("\033[31mError: Device list file \"%s\" does not exist.\033[39m" % options.deviceList)
+            done = True
+            validDeviceList = False
+    else:
+        options.macAddr = options.macAddr.lower()
+        if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", options.macAddr):
+            print("\033[31mError: Invalid MAC address \"%s\". Valid format: dd:dd:dd:dd:dd:dd\033[39m" % options.macAddr)
+            done = True
   
+  if validDeviceList:
+    devices = Device.Devices(options.deviceList)
+    if options.macAddr == "" and not noMACDevice:
+      if not devices.deviceInList(options.device):
+        print("\033[31mError: The device \"%s\" does not exist in the device list in \"%s\".\033[39m" % (options.device, options.deviceList))
+        done = True
+      else:
+        options.macAddr = devices.getDeviceMac(options.device)
+
+  if done:
+      print_usage()
+
   cap = pyshark.FileCapture(options.inputFile, use_json = True)
   Utils.sysUsage("PCAP file loading")
   

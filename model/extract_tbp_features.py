@@ -63,7 +63,8 @@ def prepare_features():
     group_size = 50
     dict_intermediates = dict()
     dircache = root_feature + '/caches'
-    if not os.path.exists(dircache): os.system('mkdir -pv %s' % dircache)
+    if not os.path.exists(dircache): 
+        os.system('mkdir -pv %s' % dircache)
     #Parse input file names
     # root_exp/dir_device/dir_exp/intermediate_file
     for dir_device in os.listdir(root_exp):
