@@ -29,5 +29,11 @@ class Devices(object):
       return self.devices[mac].name
     return None
 
+  def deviceInList(self, deviceName):
+      for device in self.devices.values():
+          if deviceName == device.name:
+              return True
+      return False
+ 
   def getDeviceMac(self, deviceName):
     return [mac for mac, device in self.devices.items() if device.name == deviceName][0]
