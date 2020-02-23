@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
   pm = DataPresentation.PlotManager(nodeStats.stats.stats, gd, options)
   pm.ipMap = ipMap
-  pm.generatePlot(options.figDir)
+  pm.generatePlot()
   
   Utils.sysUsage("Plots generated")
 
