@@ -16,7 +16,7 @@ class PlotManager(object):
     for gd in self.gd.graphs:
       print (gd)
 
-  def generatePlot(self, figDir):
+  def generatePlot(self):
     
     plt.figure(figsize=(20,20))
     plt.title(self.options.inputFile)
@@ -24,18 +24,27 @@ class PlotManager(object):
     for plot in self.gd.graphs:
       plt.subplot(len(self.gd.graphs), 1, self.subPlotCounter)
       if plot.plot == "StackPlot":
+        plt.xlabel("Packet TS")
+        plt.ylabel("Packet Size")
         self.generateStackPlot(plot)
       elif plot.plot in ["LinePlot", "ScatterPlot", "BarPlot"]:
+        plt.xlabel("Packet TS")
+        plt.ylabel("Packet Size")
         self.generateLinePlot(plot, plot.plot)
       elif plot.plot in ["PiePlot", "BarHPlot"]:
+        if self.options.ipAttr == None or self.options.ipAttr == "addrPacketSize":
+            plt.xlabel("Packet Size")
+        else:
+            plt.xlabel("Number Packets")
+        plt.ylabel("IP Address")
         self.generatePiePlot(plot, plot.plot)
 
       self.subPlotCounter += 1 
    
-    if not os.path.isdir(figDir):
-        os.system('mkdir -pv %s' % figDir)
+    if not os.path.isdir(self.options.figDir):
+        os.system('mkdir -pv %s' % self.options.figDir)
     plt.savefig(os.path.join(self.options.figDir, 
-          self.sanitiseFileName(self.options.inputFile)))
+          self.sanitiseFileName(self.options.inputFile, self.gd.graphs)))
     #plt.show()
 
 
@@ -60,9 +69,10 @@ class PlotManager(object):
  
     self.pp.plotFig()
 
-  def sanitiseFileName(self, fileName):
+  def sanitiseFileName(self, fileName, graphs):
     keepcharacters = ('-','.','_')
-    return "".join(c for c in fileName if c.isalnum() or c in keepcharacters).rstrip()+".png"
+    plots = "".join("_" + plot.plot for plot in graphs)
+    return "".join(c for c in fileName if c.isalnum() or c in keepcharacters).rstrip()+plots+".png"
 
 
 class DataPresentation(object):
@@ -216,8 +226,7 @@ class PiePlot(DataPresentation):
       print(len(list(dict.keys(self.dataDict))))
       print(len(list(list(self.dataDict.values())[0].values())))
       print(len(list(list(self.dataDict.values())[1].values())))
-      self.plot.pie(list(list(self.dataDict.values())[0].values()), labels=list(dict.keys(self.dataDict)), autopct='%1.1f%%')
-
+      self.plot.pie(list(self.dataDict.values()), labels=list(dict.keys(self.dataDict)), autopct='%1.1f%%')
 
 class BarHPlot(PiePlot):
 

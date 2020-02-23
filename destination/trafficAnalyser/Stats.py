@@ -89,7 +89,7 @@ class StatsData(object):
     if len(intersect) == 1:
       return int(getattr(layer, intersect[0]), 0)
     elif len(intersect) > 1:
-      #print ("intersect:",intersect, layer.field_names, layer.layer_name)
+      #print("intersect:",intersect, layer.field_names, layer.layer_name)
       return int(getattr(layer, intersect[0]), 0)
     else:
       return -1
