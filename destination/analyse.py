@@ -12,7 +12,7 @@ import re
 
 from trafficAnalyser import *
 
-from optparse import OptionParser, OptionGroup, OptionValueError
+import argparse
 
 __author__ = "Roman Kolcun"
 __copyright__ = "Copyright 2019"
@@ -24,25 +24,32 @@ __email__ = "roman.kolcun@imperial.ac.uk"
 __status__ = "Development"
 
 usage_stm = """
-Usage: analyse.py [options] arg1 arg2
+Usage: analyse.py -i INPUTFILE {-m MACADDR | -d DEVICE} [Options] [-g PLOT -p PROTOCOL [Graph Options]] ...
+
+Performs destination analysis on a PCAP file. Produces a CSV file detailing the organizations that traffic in the PCAP files has been to and the number of packets that were sent and received from those organizations. The program also can produce graphs of this data.
+
+Example: python analyse.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv -l IP -g LinePlot -p eth-snd,eth-rcv -l IP
 
 Options:
-  --version             show program's version number and exit
-  -h, --help            show this help message and exit
+  --version             Show program's version number and exit.
+  -h, --help            Show this help message and exit.
   -i INPUTFILE, --inputFile=INPUTFILE
-                        Input File
+                        An input PCAP file.
   -m MACADDR, --mac=MACADDR
-                        MAC Address of the device.
+                        MAC Address of the device used to create the data in 
+                        the input file.
+  -d DEVICE, --device=DEVICE
+                        Name of the device used to create the data in the input
+                        file.
   -a IPADDR, --ip=IPADDR
-                        IP Address of the device.
+                        IP Address of the device used to create the date in the
+                        input file.
   -f FIGDIR, --figDir=FIGDIR
-                        Directory to save figures.
+                        Directory to save plots.
   -t, --noTimeShift     Do not perform time shift.
   -s HOSTSFILE, --hostsFile=HOSTSFILE
                         File produced by tshark extracting hosts from the
                         pcacp file.
-  -d DEVICE, --device=DEVICE
-                        Device name.
   -b LAB, --lab=LAB     Lab name.
   -e EXPERIMENT, --experiment=EXPERIMENT
                         Experiment name.
@@ -51,205 +58,209 @@ Options:
   -o OUTPUTFILE, --outputFile=OUTPUTFILE
                         Output CSV file.
   -c DEVICELIST, --deviceList=DEVICELIST
-                        List containing all devices.
+                        List containing all devices along with their MAC addresses.
   --findDiff            Find domains which do not reply.
 
   Graph Options:
     -g PLOT, --graph=PLOT
-                        Type of graph.
-    -l IPLOC, --ipLoc=IPLOC
-                        How IP should be translated to a location or a domain
-                        name
+                        Type of graph to plot. Choose from StackPlot, LinePlot,
+                        ScatterPlot, BarPlot, PiePlot or BarHPlot. Specify
+                        multiple of this option to plot multiple graphs.
     -p PROTOCOL, --protocol=PROTOCOL
-                        Which protocols should be analysed
+                        The protocols that should be analysed. Should be specified
+                        in the format send_protocol,receive_protocol. This option
+                        must be specified after each -g option used.
+    -l IPLOC, --ipLoc=IPLOC
+                        The method to map an IP address to a host or country.
+                        Choose from Country, Host, TSharkHost, RipeCountry, or
+                        IP.
     -r IPATTR, --ipAttr=IPATTR
-                        When showing domains/IPs/countries should the number
-                        of packet or overall traffic be shown
+                        The IP packet attribute to display. Choose from either
+                        addrPacketSize or addrPacketNum.
 """
 
 def print_usage():
     print(usage_stm)
-    exit()
-
-class GraphDesc(object):
-  def __init__(self):
-    self.graphs = []
-    usage = "usage:"
-    self.parser = OptionParser(usage) 
-    self.addOptions(self.parser)
-  
-  def addOptions(self, parser):
-    parser.add_option("-l", "--ipLoc", dest="ipLoc", type="choice",
-      choices=["Country", "Host", "TSharkHost", "RipeCountry", "IP"], default=None,
-      help="How IP should be translated to a location or a domain name")
-    parser.add_option("-p", "--protocol", dest="protocol",
-      help="Which protocols should be analysed")
-    parser.add_option("-r", "--ipAttr", dest="ipAttr", type="choice",
-      choices=["addrPacketSize", "addrPacketNum"], default=None,
-      help="When showing domains/IPs/countries should the number of packet or overall traffic be shown")
-
-  def parseGraphOptions(self, option, optStr, value, parser):
-    plotTypes = ["StackPlot", "LinePlot", "ScatterPlot", "BarPlot", "PiePlot", "BarHPlot"]
-    if value not in plotTypes:
-      raise OptionValueError("Allowed graph types: {}".format(plotTypes))
-
-    parser.values.plot = value
-    try:
-      nextIndex = parser.rargs.index(optStr)
-    except ValueError:
-      nextIndex = len(parser.rargs)
-
-    args = parser.rargs[:nextIndex]
-
-    del parser.rargs[:len(args)]
-
-    (options, _args) = self.parser.parse_args(args)
-    options.plot = value
-    self.graphs.append(options)
-
-  def normaliseMac(self, option, optStr, value, parser):
-    if value != "":
-      value = Device.Device.normaliseMac(value)
-    setattr(parser.values, option.dest, value)
-
-if __name__ == "__main__":
-  gd = GraphDesc()
-
-  #Add options to usage statement
-  usage = "usage: %prog [options] arg1 arg2"
-  parser = OptionParser(usage, version="%prog 0.1")
-  parser.add_option("-i", "--inputFile", dest="inputFile", help="Input File")
-  parser.add_option("-m", "--mac", dest="macAddr", action="callback", type="string", default="", 
-      callback=gd.normaliseMac, help="MAC Address of the device.")
-  parser.add_option("-a", "--ip", dest="ipAddr", help="IP Address of the device.")
-  parser.add_option("-f", "--figDir", dest="figDir", default="figures", 
-      help="Directory to save figures.")
-  parser.add_option("-t", "--noTimeShift", dest="noTimeShift", action="store_true", 
-      default=False, help="Do not perform time shift.")
-  parser.add_option("-s", "--hostsFile", dest="hostsFile", 
-      help="File produced by tshark extracting hosts from the pcacp file.")
-  parser.add_option("-d", "--device", dest="device", default="", 
-      help="Device name.")
-  parser.add_option("-b", "--lab", dest="lab", default="", 
-      help="Lab name.")
-  parser.add_option("-e", "--experiment", dest="experiment", default="", 
-      help="Experiment name.")
-  parser.add_option("-n", "--network", dest="network", default="", 
-      help="Network name.")
-  parser.add_option("-o", "--outputFile", dest="outputFile", default="experiment.csv",
-      help="Output CSV file.")
-  parser.add_option("-c", "--deviceList", dest="deviceList", default="aux/devices_uk.txt",
-      help="List containing all devices.")
-  parser.add_option("--findDiff", dest="findDiff", action="store_true", default=False,
-      help="Find domains which do not reply.")
-
-  #Add options to graph
-  graphParser = OptionGroup(parser, "Graph Options")
-  
-  graphParser.add_option("-g", "--graph", dest="plot", action="callback",
-      type="string", callback=gd.parseGraphOptions,
-      help="Type of graph.")
-  gd.addOptions(graphParser)
-  
-  parser.add_option_group(graphParser)
-
-  (options, args) = parser.parse_args() #Parse arguments
-  
-  done = False
-  if options.inputFile == None:
-      print("\033[31mError: Pcap input file required.\033[39m")
-      done = True
-  elif not options.inputFile.endswith(".pcap"):
-      print("\033[31mError: Pcap input file required. Received \"%s\"\033[39m" % options.inputFile)
-      done = True
-  elif not os.path.isfile(options.inputFile):
-      print("\033[31mError: The input file \"%s\" does not exist.\033[39m" % options.inputFile)
-      done = True
-
-  if options.hostsFile == "":
-    options.hostsFile = options.inputFile
-  
-  noMACDevice = False
-  validDeviceList = True
-  if options.macAddr == "" and options.device == "":
-      print("\033[31mError: Either the MAC address (-m) or device (-d) must be specified.\033[39m")
-      done = True
-      noMACDevice = True
-  else:
-    if options.macAddr == "":
-        if not options.deviceList.endswith(".txt"):
-            print("\033[31mError: Device list must be a text file (.txt). Received \"%s\"\033[39m" % options.deviceList)
-            done = True
-            validDeviceList = False
-        elif not os.path.isfile(options.deviceList):
-            print("\033[31mError: Device list file \"%s\" does not exist.\033[39m" % options.deviceList)
-            done = True
-            validDeviceList = False
-    else:
-        options.macAddr = options.macAddr.lower()
-        if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", options.macAddr):
-            print("\033[31mError: Invalid MAC address \"%s\". Valid format: dd:dd:dd:dd:dd:dd\033[39m" % options.macAddr)
-            done = True
-  
-  if validDeviceList:
-    devices = Device.Devices(options.deviceList)
-    if options.macAddr == "" and not noMACDevice:
-      if not devices.deviceInList(options.device):
-        print("\033[31mError: The device \"%s\" does not exist in the device list in \"%s\".\033[39m" % (options.device, options.deviceList))
-        done = True
-      else:
-        options.macAddr = devices.getDeviceMac(options.device)
-
-  if done:
-      print_usage()
-
-  cap = pyshark.FileCapture(options.inputFile, use_json = True)
-  Utils.sysUsage("PCAP file loading")
-  
-  try:
-    if options.noTimeShift:
-      baseTS = 0
-      cap[0]
-    else:
-      baseTS = float(cap[0].frame_info.time_epoch)
-  except KeyError:
-    print ("File {} does not contain any packets.".format(options.inputFile))
     sys.exit()
 
- 
-  nodeId = Node.NodeId(options.macAddr, options.ipAddr)
-  nodeStats = Node.NodeStats(nodeId, baseTS, devices, options)
-  
-  for packet in cap:
-    nodeStats.processPacket(packet)
- 
-  Utils.sysUsage("Packets processed")
-  #print (sorted(list(dict.keys(nodeStats.stats.stats))))
-  
-  
-  ipMap = IP.IPMapping()
-  ipMap.extractFromFile(options.inputFile)
-  ipMap.loadOrgMapping("aux/ipToOrg.csv")
-  ipMap.loadCountryMapping("aux/ipToCountry.csv")
+if __name__ == "__main__":
+    print("Running analyse.py...")
+    #Main options
+    print("Reading command line arguments...")
+    parser = argparse.ArgumentParser(usage=usage_stm)
+    parser.add_argument("-i", "--inputFile", dest="inputFile")
+    parser.add_argument("-m", "--mac", dest="macAddr", default="")
+    parser.add_argument("-d", "--device", dest="device", default="")
+    parser.add_argument("-c", "--deviceList", dest="deviceList", default="aux/devices_uk.txt")
+    parser.add_argument("-a", "--ip", dest="ipAddr")
+    parser.add_argument("-f", "--figDir", dest="figDir", default="figures")
+    parser.add_argument("-t", "--noTimeShift", dest="noTimeShift", action="store_true", default=False)
+    parser.add_argument("-s", "--hostsFile", dest="hostsFile")
+    parser.add_argument("-b", "--lab", dest="lab", default="")
+    parser.add_argument("-e", "--experiment", dest="experiment", default="")
+    parser.add_argument("-n", "--network", dest="network", default="")
+    parser.add_argument("-o", "--outputFile", dest="outputFile", default="experiment.csv")
+    parser.add_argument("--findDiff", dest="findDiff", action="store_true", default=False)
 
-  Utils.sysUsage("TShark hosts loaded")
-  
-  de = DataPresentation.DomainExport(nodeStats.stats.stats, ipMap, options)
-  if options.findDiff:
-    de.loadDiffIPFor("eth")
-  else:
-    de.loadIPFor("eth")
-  de.loadDomains()
-  de.exportDataRows(options.outputFile)
-  #sys.exit()
+    #Graph Options
+    graphParser = argparse.ArgumentParser(usage=usage_stm)
+    graphParser.add_argument("-g", "--graph", dest="plot")
+    graphParser.add_argument("-p", "--protocol", dest="protocol", default="")
+    graphParser.add_argument('-l', "--ipLoc", dest="ipLoc", default="")
+    graphParser.add_argument('-r', "--ipAttr", dest="ipAttr", default="")
 
-  Utils.sysUsage("Data exported")
+    #Parse Arguments
+    start = False
+    options = [] #Main Options
+    graphs = [] #Graph Options
+    args = [] #Tmp
+    for arg in sys.argv:
+        if arg == '-g' and start == False:
+            args.pop(0)
+            options = parser.parse_args(args) #Main Options
+            start = True
+            args = []
+            args.append(arg)
+        elif arg == '-g' and start == True:
+            graphs.append(graphParser.parse_args(args)) #One set of graph options
+            args = []
+            args.append(arg)
+        else:
+            args.append(arg)
 
-  pm = DataPresentation.PlotManager(nodeStats.stats.stats, gd, options)
-  pm.ipMap = ipMap
-  pm.generatePlot()
-  
-  Utils.sysUsage("Plots generated")
+    if start == False: #Main Options (when no graph options exist)
+        args.pop(0)
+        options = parser.parse_args(args)
+    else: #Last set of graph options
+        graphs.append(graphParser.parse_args(args))
 
-  sys.exit()
-  
+    if options.macAddr != "":
+        options.macAddr = Device.Device.normaliseMac(options.macAddr)
+
+    #Error checking command line args
+    print("Performing error checking on command line arguments...")
+    done = False
+    if options.inputFile == None:
+        print("\033[31mError: Pcap input file required.\033[39m")
+        done = True
+    elif not options.inputFile.endswith(".pcap"):
+        print("\033[31mError: Pcap input file required. Received \"%s\"\033[39m" % options.inputFile)
+        done = True
+    elif not os.path.isfile(options.inputFile):
+        print("\033[31mError: The input file \"%s\" does not exist.\033[39m" % options.inputFile)
+        done = True
+
+    if options.hostsFile == "":
+        options.hostsFile = options.inputFile
+
+    if not options.outputFile.endswith(".csv"):
+        print("\033[31mError: The output file should be a .csv file. Received \"%s\".\033[39m" % options.outputFile)
+        done = True
+
+    noMACDevice = False
+    validDeviceList = True
+    if options.macAddr == "" and options.device == "":
+        print("\033[31mError: Either the MAC address (-m) or device (-d) must be specified.\033[39m")
+        done = True
+        noMACDevice = True
+    else:
+        if options.macAddr == "":
+            if not options.deviceList.endswith(".txt"):
+                print("\033[31mError: Device list must be a text file (.txt). Received \"%s\"\033[39m" % options.deviceList)
+                done = True
+                validDeviceList = False
+            elif not os.path.isfile(options.deviceList):
+                print("\033[31mError: Device list file \"%s\" does not exist.\033[39m" % options.deviceList)
+                done = True
+                validDeviceList = False
+        else:
+            options.macAddr = options.macAddr.lower()
+            if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", options.macAddr):
+                print("\033[31mError: Invalid MAC address \"%s\". Valid format: dd:dd:dd:dd:dd:dd\033[39m" % options.macAddr)
+                done = True
+
+    if validDeviceList:
+        devices = Device.Devices(options.deviceList)
+        if options.macAddr == "" and not noMACDevice:
+            if not devices.deviceInList(options.device):
+                print("\033[31mError: The device \"%s\" does not exist in the device list in \"%s\".\033[39m" % (options.device, options.deviceList))
+                done = True
+            else:
+                options.macAddr = devices.getDeviceMac(options.device)
+
+    plotTypes = ["StackPlot", "LinePlot", "ScatterPlot", "BarPlot", "PiePlot", "BarHPlot"]
+    ipLocTypes = ["", "Country", "Host", "TSharkHost", "RipeCountry", "IP"]
+    ipAttrTypes = ["", "addrPacketSize", "addrPacketNum"]
+    for graph in graphs:
+        if graph.plot not in plotTypes:
+            print("\033[31mError: \"%s\" is not a valid plot type. Must be either \"StackPlot\", \"LinePlot\", \"ScatterPlot\", \"BarPlot\", \"PiePlot\", or \"BarHPlot\".\033[39m" % graph.plot)
+            done = True
+        else:
+            if graph.protocol == "":
+                print("\033[31mError: A protocol (-p) must be specified for \"%s\".\033[39m" % graph.plot)
+                done = True
+            if graph.ipLoc not in ipLocTypes:
+                print("\033[31mError: Invalid IP locator method \"%s\" for \"%s\". Must be either \"Country\", \"Host\", \"TSharkHost\", \"RipeCountry\", or \"IP\".\033[39m" % (graph.ipLoc, graph.plot))
+                done = True
+            if graph.ipAttr not in ipAttrTypes:
+                print("\033[31mError: Invalid IP Attribute \"%s\" for \"%s\". Must be either \"addrPacketSize\" or \"addrPacketNum\".\033[39m" % (graph.ipAttr, graph.plot))
+                done = True
+
+    if done:
+        print_usage()
+    #End error checking
+
+    print("Processing PCAP file...")
+    cap = pyshark.FileCapture(options.inputFile, use_json = True)
+    Utils.sysUsage("PCAP file loading")
+
+    try:
+        if options.noTimeShift:
+            baseTS = 0
+            cap[0]
+        else:
+            baseTS = float(cap[0].frame_info.time_epoch)
+    except KeyError:
+        print ("File {} does not contain any packets.".format(options.inputFile))
+        sys.exit()
+
+    nodeId = Node.NodeId(options.macAddr, options.ipAddr)
+    nodeStats = Node.NodeStats(nodeId, baseTS, devices, options)
+    print(nodeStats.stats.stats)
+    print("Processing packets...")
+    for packet in cap:
+        print(nodeStats.stats.stats)
+        nodeStats.processPacket(packet)
+
+    Utils.sysUsage("Packets processed")
+    #print (sorted(list(dict.keys(nodeStats.stats.stats))))
+
+    print("Mapping IP to host...")
+    ipMap = IP.IPMapping()
+    ipMap.extractFromFile(options.inputFile)
+    ipMap.loadOrgMapping("aux/ipToOrg.csv")
+    ipMap.loadCountryMapping("aux/ipToCountry.csv")
+
+    Utils.sysUsage("TShark hosts loaded")
+
+    print("Generating output CSV...")
+    de = DataPresentation.DomainExport(nodeStats.stats.stats, ipMap, options)
+    if options.findDiff:
+        de.loadDiffIPFor("eth")
+    else:
+        de.loadIPFor("eth")
+    de.loadDomains()
+    de.exportDataRows(options.outputFile)
+    #sys.exit()
+
+    Utils.sysUsage("Data exported")
+
+    print("Generating plots...")
+    pm = DataPresentation.PlotManager(nodeStats.stats.stats, graphs, options)
+    pm.ipMap = ipMap
+    pm.generatePlot()
+
+    Utils.sysUsage("Plots generated")
+
+    sys.exit()
+
