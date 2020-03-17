@@ -41,6 +41,8 @@ Options:
   -d DEVICE, --device=DEVICE
                         Name of the device used to create the data in the input
                         file.
+  -c DEVICELIST, --deviceList=DEVICELIST
+                        List containing all devices along with their MAC addresses.
   -a IPADDR, --ip=IPADDR
                         IP Address of the device used to create the date in the
                         input file.
@@ -57,14 +59,12 @@ Options:
                         Network name.
   -o OUTPUTFILE, --outputFile=OUTPUTFILE
                         Output CSV file.
-  -c DEVICELIST, --deviceList=DEVICELIST
-                        List containing all devices along with their MAC addresses.
   --findDiff            Find domains which do not reply.
 
   Graph Options:
     -g PLOT, --graph=PLOT
                         Type of graph to plot. Choose from StackPlot, LinePlot,
-                        ScatterPlot, BarPlot, PiePlot or BarHPlot. Specify
+                        ScatterPlot, BarPlot, PiePlot, or BarHPlot. Specify
                         multiple of this option to plot multiple graphs.
     -p PROTOCOL, --protocol=PROTOCOL
                         The protocols that should be analysed. Should be specified
@@ -72,8 +72,7 @@ Options:
                         must be specified after each -g option used.
     -l IPLOC, --ipLoc=IPLOC
                         The method to map an IP address to a host or country.
-                        Choose from Country, Host, TSharkHost, RipeCountry, or
-                        IP.
+                        Choose from Country, Host, IP, RipeCountry, or TSharkHost.
     -r IPATTR, --ipAttr=IPATTR
                         The IP packet attribute to display. Choose from either
                         addrPacketSize or addrPacketNum.
@@ -83,8 +82,31 @@ def print_usage():
     print(usage_stm)
     sys.exit()
 
+def find_invalid_goptions(args):
+    #Prints an error message if there are options other than -p, -l, or -r among the graph options
+    done = False
+    for arg in args:
+        if arg[0] == '-':
+            if arg not in ("-g", "-p", "-l", "-r"):
+                done = True
+                print("\033[31mError: The \"%s\" option is after the \"-g\" option.\033[39m" % arg)
+    if done:
+        print("\033[31mOnly the \"-p\", \"-l\", and \"-r\" options may follow a \"-g\" option. All other options must be placed before the first \"-g\" option.\033[39m")
+        print_usage()
+
 if __name__ == "__main__":
     print("Running analyse.py...")
+    missingDb = False
+    if not os.path.isfile("./geoipdb/GeoLite2-City.mmdb"):
+        missingDB = True
+        print("The GeoLite2-City.mmdb database is missing.")
+    if not os.path.isfile("./geoipdb/GeoLite2-Country.mmdb"):
+        missingDB = True
+        print("The GeoLite2-Country.mmdb database is missing.")
+    if missingDb:
+        print("Please go to the README for instructions to download the databases. If you have already downloaded the databases, please place them in the geoipdb/ directory.")
+        exit()
+
     #Main options
     print("Reading command line arguments...")
     parser = argparse.ArgumentParser(usage=usage_stm)
@@ -115,24 +137,34 @@ if __name__ == "__main__":
     graphs = [] #Graph Options
     args = [] #Tmp
     for arg in sys.argv:
-        if arg == '-g' and start == False:
+        if arg == '-g' and start == False: #Main Options
             args.pop(0)
-            options = parser.parse_args(args) #Main Options
+            options = parser.parse_args(args)
             start = True
             args = []
             args.append(arg)
-        elif arg == '-g' and start == True:
-            graphs.append(graphParser.parse_args(args)) #One set of graph options
+        elif arg == '-g' and start == True: #One set of graph options
+            find_invalid_goptions(args)
+            gopts = graphParser.parse_args(args)
+            if gopts.plot == "PiePlot":
+                print("***PiePlot currently does not function properly. Please choose a different plot. Currently available plots: StakPlot, LinePlot, ScatterPlot, BarPlot, BarHPlot")
+                exit()
+            graphs.append(gopts)
             args = []
             args.append(arg)
-        else:
+        else: #Append arg to temporary array
             args.append(arg)
 
     if start == False: #Main Options (when no graph options exist)
         args.pop(0)
         options = parser.parse_args(args)
     else: #Last set of graph options
-        graphs.append(graphParser.parse_args(args))
+        find_invalid_goptions(args)
+        gopts = graphParser.parse_args(args)
+        if gopts.plot == "PiePlot":
+            print("***PiePlot currently does not function properly. Please choose a different plot. Currently available plots: StakPlot, LinePlot, ScatterPlot, BarPlot, BarHPlot")
+            exit()
+        graphs.append(gopts)
 
     if options.macAddr != "":
         options.macAddr = Device.Device.normaliseMac(options.macAddr)
@@ -221,19 +253,17 @@ if __name__ == "__main__":
         else:
             baseTS = float(cap[0].frame_info.time_epoch)
     except KeyError:
-        print ("File {} does not contain any packets.".format(options.inputFile))
+        print("File {} does not contain any packets.".format(options.inputFile))
         sys.exit()
 
     nodeId = Node.NodeId(options.macAddr, options.ipAddr)
     nodeStats = Node.NodeStats(nodeId, baseTS, devices, options)
-    print(nodeStats.stats.stats)
     print("Processing packets...")
     for packet in cap:
-        print(nodeStats.stats.stats)
         nodeStats.processPacket(packet)
 
     Utils.sysUsage("Packets processed")
-    #print (sorted(list(dict.keys(nodeStats.stats.stats))))
+    #print(sorted(list(dict.keys(nodeStats.stats.stats))))
 
     print("Mapping IP to host...")
     ipMap = IP.IPMapping()
@@ -250,7 +280,7 @@ if __name__ == "__main__":
     else:
         de.loadIPFor("eth")
     de.loadDomains()
-    de.exportDataRows(options.outputFile)
+    de.exportDataRows()
     #sys.exit()
 
     Utils.sysUsage("Data exported")

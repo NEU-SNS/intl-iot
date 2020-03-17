@@ -26,7 +26,6 @@ class NodeStats(object):
         self.stats = Stats.Stats(self)
         self.options = options
         self.extractLayers(self.options)
-        print(self.stats.stats)
 
     def processPacket(self, packet):
         #print(dir(packet.eth))

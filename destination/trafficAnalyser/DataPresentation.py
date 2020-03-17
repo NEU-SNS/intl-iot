@@ -41,8 +41,10 @@ class PlotManager(object):
    
         if not os.path.isdir(self.options.figDir):
             os.system('mkdir -pv %s' % self.options.figDir)
-        plt.savefig(os.path.join(self.options.figDir, 
-            self.sanitiseFileName(self.options.inputFile, self.graphs)))
+        graphPath = os.path.join(self.options.figDir,
+            self.sanitiseFileName(self.options.inputFile, self.graphs))
+        plt.savefig(graphPath)
+        print("Plot successfully saved to \"%s\"" % graphPath)
         #plt.show()
 
     def generateStackPlot(self, options):
@@ -351,16 +353,18 @@ class DomainExport(DataPresentation):
 
             self.dataRows.append(row)
 
-    def exportDataRows(self, fileName):
-        if not os.path.isfile(fileName):
+    def exportDataRows(self):
+        if not os.path.isfile(self.options.outputFile):
             saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organisation\n"
         else:
             saveStr = ""
    
         saveStr+= "\n".join([",".join(r) for r in self.dataRows])+"\n"
     
-        with open(fileName, 'a+') as f:
+        with open(self.options.outputFile, 'a+') as f:
             f.write(saveStr)
+
+        print("Analyzed data from \"%s\" successfully written to \"%s\"" % (self.options.inputFile, self.options.outputFile))
 
     def getVal(self, _dict, key):
         if key in _dict:
