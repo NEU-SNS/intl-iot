@@ -71,5 +71,5 @@ Content Analysis takes in several pcap files to create a machine learning model.
 Usage: `./model.sh exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path`
 
 Example: `./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv`
-   - Output: TShark decodes the pcap files listed in `list_exp.txt` and writes the output to the tagged-intermediate/us/` directory. Features are then extracted and placed in the `features/us/` directory. Using the features, a machine learning model is created and placed in the `tagged-models/us/` directory. The pcap file `sample-yi-camera-recording.pcap` is then sent into the model and the results are produced to `sample-result.csv`.
+   - Output: TShark decodes the pcap files listed in `list_exp.txt` and writes the output to the `tagged-intermediate/us/` directory. Features are then extracted and placed in the `features/us/` directory. Using the features, a machine learning model is created and placed in the `tagged-models/us/` directory. The pcap file `sample-yi-camera-recording.pcap` is then sent into the model and the results are produced to `sample-result.csv`.
 
