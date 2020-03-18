@@ -68,15 +68,48 @@ TH_HIGH=0.9
 TH_LOW=0.4
 TH_ENCRYPTED=0.8
 
+def usage():
+    print("Usage: %s json_file csv_file\n" % sys.argv[0])
+    print("Uses the JSON file to output a CSV file that includes the entropy of each packet and its classification (encrypted, text, media, unknown).\n")
+    print("Example: %s output/traffic.json output/traffic.csv\n" % sys.argv[0])
+    print("Arguments:")
+    print("  json_file: The output json file from running TShark")
+    print("  csv_file: The output csv file of this script")
+    exit(0)
+
 def main():
-    if len(sys.argv) < 3:
-        print('Usage: %s bigjsonfile rowcsvfile' % sys.argv[0])
-        exit(0)
-    print('Shrink and compute entropy of %s ...' % sys.argv[1])
-    forpd = split_layers(sys.argv[1])
+    print("Running %s..." % sys.argv[0])
+    jsonfile = sys.argv[1]
     csvfile = sys.argv[2]
+    
+    print("Performing error checking on command line arguments...")
+    if len(sys.argv) != 3:
+        print("\033[31mError: 2 arguments expected. %s arguments found.\033[39m" % len(sys.argv))
+        usage()
+
+    done = False
+    if not jsonfile.endswith(".json"):
+        done = True
+        print("\033[31mError: The file \"%s\" is not a JSON file.\033[39m" % jsonfile)
+    elif not os.path.isfile(jsonfile):
+        done = True
+        print("\033[31mError: The file \"%s\" does not exist.\033[39m" % jsonfile)
+    if not csvfile.endswith(".csv"):
+        done = True
+        print("\033[31mError: The file \"%s\" is not a CSV file.\033[39m" % csvfile)
+
+    if done:
+        usage()
+
+    print('Shrink and compute entropy of %s...' % jsonfile)
+    forpd = split_layers(jsonfile)
     if len(forpd) > 0:
         # open(outfile, 'w').write('\n'.join(forout))
+        print("Writing to \"%s\"..." % csvfile)
+        dirname = os.path.dirname(csvfile)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+
         with open(csvfile, 'w') as cf:
             cf.write(result_header+'\n')
             n_rows = 0
@@ -84,11 +117,9 @@ def main():
                 if row is not None:
                     n_rows+=1
                     cf.write('%s\n' % ','.join(map(str, row)))
-            print('Result -> %s (%s packets)' % (csvfile, n_rows))
+            print('Results -> %s (%s packets)' % (csvfile, n_rows))
 
 def split_layers(infile):
-    if not os.path.exists(infile):
-        return []
     """
     infile is the ek output from .pcap file
     """
