@@ -46,6 +46,11 @@ check_args() {
         errors=True
         echo -e "\e[31m:Error: The result file $result_path should have a .csv extension.\e[39m"
     fi
+
+    if [ $errors = True ]
+    then
+        usage
+    fi
 }
 
 run_pipeline() {

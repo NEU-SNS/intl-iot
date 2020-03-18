@@ -80,7 +80,7 @@ Options:
 
 def print_usage():
     print(usage_stm)
-    sys.exit()
+    exit(0)
 
 def find_invalid_goptions(args):
     #Prints an error message if there are options other than -p, -l, or -r among the graph options
@@ -95,7 +95,7 @@ def find_invalid_goptions(args):
         print_usage()
 
 if __name__ == "__main__":
-    print("Running analyse.py...")
+    print("Running %s..." % sys.argv[0])
     missingDb = False
     if not os.path.isfile("./geoipdb/GeoLite2-City.mmdb"):
         missingDB = True
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         print("The GeoLite2-Country.mmdb database is missing.")
     if missingDb:
         print("Please go to the README for instructions to download the databases. If you have already downloaded the databases, please place them in the geoipdb/ directory.")
-        exit()
+        exit(0)
 
     #Main options
     print("Reading command line arguments...")
@@ -148,7 +148,7 @@ if __name__ == "__main__":
             gopts = graphParser.parse_args(args)
             if gopts.plot == "PiePlot":
                 print("***PiePlot currently does not function properly. Please choose a different plot. Currently available plots: StakPlot, LinePlot, ScatterPlot, BarPlot, BarHPlot")
-                exit()
+                exit(0)
             graphs.append(gopts)
             args = []
             args.append(arg)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         gopts = graphParser.parse_args(args)
         if gopts.plot == "PiePlot":
             print("***PiePlot currently does not function properly. Please choose a different plot. Currently available plots: StakPlot, LinePlot, ScatterPlot, BarPlot, BarHPlot")
-            exit()
+            exit(0)
         graphs.append(gopts)
 
     if options.macAddr != "":

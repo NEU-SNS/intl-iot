@@ -71,12 +71,12 @@ Options:
 Required options:
 - The -i options is required. This is the input PCAP file to be processed.
 - The MAC address of the device whose traffic is recorded in the PCAP file is also needed. Inputting the MAC address can be done in two ways:
-  - 1) Input the MAC address using the -m option.
-  - 2) Input the device name in the -d option, and input the file name to a list of devices using the -c option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
+  - Input the MAC address using the -m option.
+  - Input the device name in the -d option, and input the file name to a list of devices using the -c option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
 
 All other options are optional.
 
-If graphs are to be outputted, each graph should be specified using its own -g option. Any -p, -l, or -r option specified will be applied to the closest preceding -g option. Note that the -p option is required for each -g option used. Also note that all graph options must be specified at the end of the command; Non-graph options cannot come after a -g option.
+If graphs are to be outputted, each graph should be specified using its own -g option. Any -p, -l, or -r option specified will be applied to the closest preceding -g option. Note that the -p option is required for each -g option used. Also note that all graph options must be specified at the end of the command; non-graph options cannot come after a -g option.
 
 More information about the graph options:
 `GRAPH_TYPE`, -g, can currently be one of the following:
