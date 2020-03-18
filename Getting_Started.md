@@ -41,14 +41,17 @@ Destination Analysis analyses where the network traffic in input pcap files has 
 ### Run Pipeline
 Very basic usage: `python analyse.py -i INPUTFILE -m MACADDR [-g PLOT -p PROTOCOL]`
 Very basic usage requires the an input pcap file and a MAC address of the device from which the data in the input pcap file was generated from. The -g option produces a graph, and the -p option modifies how the graph is created. Graph related options (-g and -p in this example) must come at the very end of the command.
+
 Example 1: `python analyse.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv`
    - Output: A CSV file named `experiment.csv` is produced in the current directory (`destination/`), and a stack plot is produced in a newly created `figures/` directory.
 
 More than one plot can be created by specifying more than one -g option at the end of the command.
+
 Example 2: `python analyse.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv`
    - Output: A CSV file named `experiment.csv` is produced in the current directory, and an image in the `figures/` directory is produced containing a stack plot and a line plot.
 
 As an alternative to the MAC address, a device and a device list can be given. The device list is a text file that with a different device on each line. Each line is formatted as follows: `[MAC] [Device name]`. An example device list is `aux/devices_uk.txt`. In the command, the MAC address of the given device will be used.
+
 Example 3: `python analyse.py -i iot-data/uk/echodot/voice/2019-04-26_17:12:55.23s.pcap -d echodot -c aux/devices_uk.txt -o out_csv.csv -f out_figs/ -g BarPlot -p eth-snd,eth-rcv`
    - Output: The script uses the Echo Dot MAC address in `aux/devices_uk.txt` to perform analysis. A CSV named `out_csv.csv` is created. A bar plot is produced in the newly created `out_figs/` directory.
 
@@ -58,6 +61,7 @@ Encryption Analysis determines the entropy of packets in an input pcap file and 
 `cd` into the `intl-iot/encryption/` directory.
 
 Usage: `./encryption.sh in_pcap out_csv ek_json`
+
 Example: `./encryption.sh samples/traffic.pcap output/traffic.csv output/traffic.json`
    - Output: The input pcap file `samples/traffic.pcap` is run through TShark to produce `output/traffic.json`. This JSON file is analyzed to produce `output/traffic.csv`.
 
@@ -65,6 +69,7 @@ Example: `./encryption.sh samples/traffic.pcap output/traffic.csv output/traffic
 Content Analysis takes in several pcap files to create a machine learning model. The model can then be used to predict the amount of device activity from a different pcap file that can be inferred based on the network data in that pcap file.
 
 Usage: `./model.sh exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path`
+
 Example: `./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv`
    - Output: TShark decodes the pcap files listed in `list_exp.txt` and writes the output to the tagged-intermediate/us/` directory. Features are then extracted and placed in the `features/us/` directory. Using the features, a machine learning model is created and placed in the `tagged-models/us/` directory. The pcap file `sample-yi-camera-recording.pcap` is then sent into the model and the results are produced to `sample-result.csv`.
 
