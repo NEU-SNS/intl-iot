@@ -27,5 +27,5 @@ The sample code intends to demonstrate how we processed a single file. One shoul
 - `ek_json` - The path to the intermediate JSON file.
 
 ## Output
-The script first runs TShark with the input pcap file. TShark decodes the pcap file and dumps the results in the JSON file. Analysis is performed on the JSON file, which produces the CSV file.
+The script first runs TShark with the input pcap file. TShark decodes the pcap file and dumps the results in the JSON file. `shrink_compute.py` then performs analysis on the JSON file, which produces the CSV file.
 

@@ -36,8 +36,8 @@ sudo apt-get install python3-dev
 sudo apt-get install python3.6-tk
 sudo apt-get install gcc
 
-virtualenv -p python3.6 env3
-source env3/bin/activate
+virtualenv -p python3.6 env
+source env/bin/activate
 ```
 
 Once the environment is setup and running, install the following packages:
