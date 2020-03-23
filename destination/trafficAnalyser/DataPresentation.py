@@ -298,7 +298,7 @@ class DomainExport(DataPresentation):
             rcvIP = []
 
         diffIP = list(set(sndIP) - set(rcvIP))
-        #print ("Diff IP", diffIP, sndIP, rcvIP)
+        #print("Diff IP", diffIP, sndIP, rcvIP)
 
         for ip in diffIP:
             key = "{}-snd".format(layer)
@@ -337,8 +337,9 @@ class DomainExport(DataPresentation):
             for valueType in ["packetSize", "packetNum"]: 
                 for layer in self.layers:
                     for direction in [Constants.Direction.SND, Constants.Direction.RCV]:
-                        key = key = "{}-{}".format(layer, direction)
+                        key = "{}-{}".format(layer, direction)
                         try: 
+                            print(self.domains)
                             row.append(str(self.getVal(self.domains[valueType][key], ip)))
                         except KeyError:
                             row.append("0")

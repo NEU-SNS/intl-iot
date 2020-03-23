@@ -17,7 +17,7 @@ Example: python analyse.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36
 
 Example: python analyse.py -i iot-data/uk/echodot/voice/2019-04-26_17:12:55.23s.pcap -d echodot -o output.csv -g LinePlot -p eth-snd,eth-rcv -l Country -r addrPacketSize -g BarPlot -p eth-snd,eth-rcv
 ```
-## Input
+### Input
 There are required arguments as well as several optional arguments which one can choose from. Below is a summary of all the options.
 
 ```
@@ -69,7 +69,7 @@ Options:
                         addrPacketSize or addrPacketNum.
 ```
 Required options:
-- The -i options is required. This is the input PCAP file to be processed.
+- The -i options is required. This is the path to the input PCAP file to be processed.
 - The MAC address of the device whose traffic is recorded in the PCAP file is also needed. Inputting the MAC address can be done in two ways:
   - Input the MAC address using the -m option.
   - Input the device name in the -d option, and input the file name to a list of devices using the -c option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
@@ -101,8 +101,26 @@ All traffic is included in the "eth" (ethernet) protocol, so to analyse all sent
 - `RipeCountry` - uses Ripe.net API to find the location of an IP address. If it fails, the Geo IP Database is used.
 - `TSharkHost` - uses the list produced by the `tshark` utility, which extracts hosts from the `.pcap` file. If a domain is not found, reverse DNS lookup is used.
 
-## Output
+### Output
 When analyse.py is run, a csv containing an analysis of the input PCAP file is produced. By default, the CSV is stored in experiment.csv. However, the output file name can be changed by using the -o option. If the requested output file name already exists, the program will append the new data instead of overwriting.
+
+The CSV file has 15 headings. Their meanings are listed below:
+
+- `device` - the input into the -d option.
+- `ip` - the IP address of the packets being analyzed.
+- `host` - the domain name of the IP address. If not found, the IP address is used.
+- `host_full` - the full domain name including the subdomain. If not found, the IP address is used.
+- `traffic_snd` - the size of the packets sent.
+- `traffic_rcv` - the size of the packets received.
+- `packet_snd` - the number of packets sent.
+- `packet_rcv` - the number of packets received.
+- `country` - the country code of the country that the IP address belongs to. If not found, "XX" is displayed.
+- `party` - is currently always "0".
+- `lab` - the input into the -b option.
+- `experiment` - the input into the -e option.
+- `network` - the input into the -n option.
+- `input_file` - the input pcap file while the data was generated from.
+- `organisation` - the organisation that the IP address belongs to. If not found, "N/A" is displayed.
 
 If graphs are produced, they will be stored in the figures/ directory by default. The output directory can be changed by using the -f option. Each time analyse.py is run, exactly one PNG file is produced if one or more -g options are specified. The PNG file contains all the graphs specified. The name of the PNG file is the argument given into the -i option followed by the type(s) of graphs produced.
 

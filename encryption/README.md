@@ -20,12 +20,24 @@ Example (run sample pcap): ./encryption.sh samples/traffic.pcap output/traffic.c
 ```
 The sample code intends to demonstrate how we processed a single file. One should adapt the code in their clusters environment to proccess the whole dataset (traffic of 34,586 experiments). 
 
-## Input
+### Input
 
 - `in_pcap` - The path to the input pcap file.
 - `out_csv` - The path to the output CSV file.
 - `ek_json` - The path to the intermediate JSON file.
 
-## Output
-The script first runs TShark with the input pcap file. TShark decodes the pcap file and dumps the results in the JSON file. `shrink_compute.py` then performs analysis on the JSON file, which produces the CSV file.
+### Output
+The script first runs TShark with the input pcap file. TShark decodes the pcap file and dumps the results in the JSON file. `shrink_compute.py` then performs analysis on the JSON file, which produces the CSV file. The output files are placed in the `output/` directory.
 
+The CSV file has ten headings. Their meanings are listed below:
+
+- `ip_src` - the IP address of the source.
+- `ip_dest` - the IP address of the destination.
+- `srcport` - the transport layer source port number
+- `dstport` - the transport layer destination port number
+- `tp_proto` - the transport layer protocol
+- `data_proto` - the application layer protocol
+- `data_type` - the data type. Either unknown, text, media, compressed, or encrypted
+- `data_len` - the length of the data in bytes.
+- `entropy` - the entropy of the data
+- `reason` - information about the output

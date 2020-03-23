@@ -21,7 +21,7 @@ save_extracted_features = False
 
 def usage():
     print("Usage: python3 %s device_name pcap_path result_file model_dir\n" % os.path.basename(__file__))
-    print("Uses a model to predict the amount of device activity that can be inferred from a pcap file.\n")
+    print("Uses a model to predict the device activity given network traffic of that device.\n")
     print("Example: python3 -W ignore %s yi-camera sample-yi-camera-recording.pcap sample-result.csv tagged-models/us/\n" % os.path.basename(__file__))
     print("Arguments:")
     print("  device_name: The name of the device that the decoded pcap file contains network traffic of")
@@ -63,7 +63,7 @@ def main():
         file_model = '%s/%s.model' % (dir_models, device)
         file_labels = '%s/%s.label.txt' % (dir_models, device)
         if not os.path.isfile(file_model):
-            print("\033[31mError: The model file %s cannot be found. Please regenerate file, ccheck directory name, or check device name.\033[39m" % file_model)
+            print("\033[31mError: The model file %s cannot be found. Please regenerate file, check directory name, or check device name.\033[39m" % file_model)
             errors = True
         if not os.path.isfile(file_labels):
             print("\033[31mError: The label file %s cannot be found. Please regenerate file, check directory name, or check device name.\033[39m" % file_labels)
@@ -154,7 +154,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
         num_pkt = len(pd_obj)
 
         start_ts_delta = pd_obj.iloc[0].ts_delta
-        list_start_ts_text.append('%s (%s) n=%s' % (start_ts, start_ts_delta, len(pd_obj)))
+        list_start_ts_text.append('%s (%s) n=%s' % (start_ts, start_ts_delta, num_pkt))
 
         end_ts = pd_obj.iloc[num_pkt - 1].ts
         list_res.append([start_ts, end_ts, start_ts_delta, num_pkt]) #The results that are printed
@@ -187,7 +187,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     # print(y_predict)
     p_readable = []
     theta = 0.7
-    # print( y_predict.ndim, 'ndim: ')
+    # print(y_predict.ndim, 'ndim: ')
     # if y_predict.ndim == 1:
     #     return
 
@@ -221,7 +221,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
         if not os.path.exists(dir_online_features_device):
             os.makedirs(dir_online_features_device, exist_ok=True)
         feature_file = '%s/%s.csv' % (dir_online_features_device, min_date)
-        # pd_unknown  = pd.concat(list_unknown, ignore_index=True)
+        # pd_unknown = pd.concat(list_unknown, ignore_index=True)
         # print('Write unknown into %s' % feature_file)
         pd_unknown.to_csv(feature_file, index=False)
 

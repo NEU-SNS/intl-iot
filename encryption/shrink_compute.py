@@ -109,7 +109,7 @@ def main():
         dirname = os.path.dirname(csvfile)
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
-
+        
         with open(csvfile, 'w') as cf:
             cf.write(result_header+'\n')
             n_rows = 0
