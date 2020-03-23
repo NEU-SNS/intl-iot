@@ -24,9 +24,9 @@ If you would like to use the dataset from this study, follow the directions belo
 1) Go to the [Mon(IoT)r Lab site](https://moniotrlab.ccis.neu.edu/imc19/) to request access to the dataset. You will have to agree to a data sharing agreement because of sensitive information that may still be in the data.
 2) Once you have access, download the four tar archives.
 3) Untar each of them: `tar -zxvf [tar archive]`
-4) Move the directories created by `iot-data.tgz` and iot-idle.tgz` into the `destination/` directory.
+4) Move the directories created by `iot-data.tgz` and `iot-idle.tgz` into the `destination/` directory.
 5) Move the directories created by `iot-model.tgz` into the `model/` directory.
-6) Move the directory created by `synthetic.tgz` into the `encryption/validation` directory.
+6) Move the directory created by `synthetic.tgz` into the `encryption/validation/` directory.
 
 ## Destination Analysis
 Destination Analysis analyses where the network traffic in input pcap files has been to. A CSV file containing the analysis is outputted. Optional plots to visualize the data can also be outputted.
@@ -40,7 +40,10 @@ Destination Analysis analyses where the network traffic in input pcap files has 
 
 ### Run Pipeline
 Very basic usage: `python analyse.py -i INPUTFILE -m MACADDR [-g PLOT -p PROTOCOL]`
-Very basic usage requires the an input pcap file and a MAC address of the device from which the data in the input pcap file was generated from. The -g option produces a graph, and the -p option modifies how the graph is created. Graph related options (-g and -p in this example) must come at the very end of the command.
+
+For input, very basic usage requires the path to an input pcap file and a MAC address of the device from which the data in the input pcap file was generated from. The -g option produces a graph, and the -p option modifies how the graph is created. Graph related options (-g and -p in this example) must come at the very end of the command.
+
+For output, a CSV called `experiment.csv` is generated. Information about the contents of this file can be found in the [Destination README](./destination/README.md). Optional graphs can be produced using the -g option.
 
 Example 1: `python analyse.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv`
    - Output: A CSV file named `experiment.csv` is produced in the current directory (`destination/`), and a stack plot is produced in a newly created `figures/` directory.
@@ -62,14 +65,30 @@ Encryption Analysis determines the entropy of packets in an input pcap file and 
 
 Usage: `./encryption.sh in_pcap out_csv ek_json`
 
+For input, this script requires the path to an input pcap file and paths to where output CSV and JSON files should be created.
+
+For output, JSON and CSV files are generated. The JSON file is intermediate output. The JSON file is parsed, and the parsed information is written to the CSV file. More information about the contents of the CSV file can be found in the [Encryption README](./encryption/README.md).
+
 Example: `./encryption.sh samples/traffic.pcap output/traffic.csv output/traffic.json`
    - Output: The input pcap file `samples/traffic.pcap` is run through TShark to produce `output/traffic.json`. This JSON file is analyzed to produce `output/traffic.csv`.
 
 ## Content Analysis
-Content Analysis takes in several pcap files to create a machine learning model. The model can then be used to predict the amount of device activity from a different pcap file that can be inferred based on the network data in that pcap file.
+Content Analysis takes in several pcap files to create a machine learning model. The model can then be used to predict the device activity of a different pcap file based on the network data of that device.
+
+`cd` into the `intl-iot/model/` directory.
 
 Usage: `./model.sh exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path`
 
+For input, this pipeline requires several items:
+- `exp_list`: The text file that contains paths to pcap files to analyze to generate the models. To see the format of this text file, please see the `list_exp.txt` section of [model/model-details.md](model/model-details.md).
+- `intermediate_dir`: The path to the directory to place the decoded pcap files.
+- `features_dir`: The path to the directory to place the analyzed files.
+- `model_dir`: The path to the directory to place the generated models.
+- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict the amount of device activity. This should be the same name as the device directory (see the `list_exp.txt` section in [model/model-details.md](model/model-details.md) below) that the input pcap file is in.
+- `pcap_path`: The path to the pcap file that will be used to predict the amount of device activity.
+- `result_path`: The path to a CSV file to write the reslts.
+
+For output, a CSV file containing the prediction is produced. For more information about the contents of the CSV file, see the output section in [model/README.md](model/README.md).
+
 Example: `./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv`
    - Output: TShark decodes the pcap files listed in `list_exp.txt` and writes the output to the `tagged-intermediate/us/` directory. Features are then extracted and placed in the `features/us/` directory. Using the features, a machine learning model is created and placed in the `tagged-models/us/` directory. The pcap file `sample-yi-camera-recording.pcap` is then sent into the model and the results are produced to `sample-result.csv`.
-

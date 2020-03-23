@@ -28,7 +28,7 @@ inputFile=$1
 dirIntermediate=$2
 
 #Check that exp_list is a .txt file and exists
-if [[ $1 != *.txt ]]
+if [[ $inputFile != *.txt ]]
 then
     echo -e "\e[31mError: Input file must be a text file (.txt). Received $1\e[39m"
     usage

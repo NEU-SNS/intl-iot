@@ -285,12 +285,13 @@ if __name__ == "__main__":
 
     Utils.sysUsage("Data exported")
 
-    print("Generating plots...")
-    pm = DataPresentation.PlotManager(nodeStats.stats.stats, graphs, options)
-    pm.ipMap = ipMap
-    pm.generatePlot()
+    if len(graphs) != 0:
+        print("Generating plots...")
+        pm = DataPresentation.PlotManager(nodeStats.stats.stats, graphs, options)
+        pm.ipMap = ipMap
+        pm.generatePlot()
 
-    Utils.sysUsage("Plots generated")
+        Utils.sysUsage("Plots generated")
 
     sys.exit()
 
