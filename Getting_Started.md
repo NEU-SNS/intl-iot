@@ -23,7 +23,7 @@ If you would like to use the dataset from this study, follow the directions belo
 
 1) Go to the [Mon(IoT)r Lab site](https://moniotrlab.ccis.neu.edu/imc19/) to request access to the dataset. You will have to agree to a data sharing agreement because of sensitive information that may still be in the data.
 2) Once you have access, download the four tar archives.
-3) Untar each of them: `tar -zxvf [tar archive]`
+3) Untar each of them: `tar -zxvf [tar archive]`.
 4) Move the directories created by `iot-data.tgz` and `iot-idle.tgz` into the `destination/` directory.
 5) Move the directories created by `iot-model.tgz` into the `model/` directory.
 6) Move the directory created by `synthetic.tgz` into the `encryption/validation/` directory.
@@ -34,8 +34,8 @@ Destination Analysis analyses where the network traffic in input pcap files has 
 ### Setup
 1) Download the GeoLite2 city and country databases by creating a free account at https://dev.maxmind.com/geoip/geoip2/geolite2/.
 2) Untar the tar archives. In the untarred country directory, you will find a database named `GeoLite2-Country.mmdb`. In the untarred city directory, you will, similarly, find a database named `GeoLite2-City.mmdb`.
-3) `cd` into the `intl-iot/destination/` directory
-4) Make directory to hold the databases: `mkdir geoipdb/`
+3) `cd` into the `intl-iot/destination/` directory.
+4) Make directory to hold the databases: `mkdir geoipdb/`.
 5) Move the two database files listed above into the `geoipdb/` directory.
 
 ### Run Pipeline

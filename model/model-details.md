@@ -8,15 +8,15 @@ Below is a detailed description about the functions of each script run in [model
 
 Example: `./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv`
 
-This is the main script of the content analysis pipeline. The scripts listed below are parts of this pipeline. The main goal of this pipeline is to use machine learning to predict the device activity given the network traffic of that device. First, the pipeline needs to create a model using machine learning. The raw network traffic (provided in pcap files) is translated into human-readable raw data. This raw data is then statistically analyzed and sent into an algorithm for training. Once trained, a model will be generated for each device. A pcap file with an unknown amount of device activity that can be inferred can be put through the same process of translating it into human-readable data and statistically analyzed. The analyzed data can then be used to predict the amount of device activity that can be inferred based on the network traffic.
+This is the main script of the content analysis pipeline. The scripts listed below are parts of this pipeline. The main goal of this pipeline is to use machine learning to predict the device activity given the network traffic of that device. First, the pipeline needs to create a model using machine learning. The raw network traffic (provided in pcap files) is translated into human-readable raw data. This raw data is then statistically analyzed and sent into an algorithm for training. Once trained, a model will be generated for each device. A pcap file with unknown device activity can be put through the same process of translating it into human-readable data and statistically analyzing it. The analyzed data can then be used to predict the device activity based on the network traffic.
 
 Input:
 - `exp_list`: The text file that contains paths to pcap files to analyze to generate the models.
 - `intermediate_dir`: The path to the directory to place the decoded pcap files.
 - `features_dir`: The path to the directory to place the analyzed files.
 - `model_dir`: The path to the directory to place the generated models.
-- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict the amount of device activity. This should be the same name as the device directory (see the `list_exp.txt` section below) that the input pcap file is in.
-- `pcap_path`: The path to the pcap file that will be used to predict the amount of device activity.
+- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict device activity. This should be the same name as the device directory (see the `list_exp.txt` section below) that the input pcap file is in.
+- `pcap_path`: The path to the pcap file that will be used to predict device activity.
 - `result_path`: The path to a CSV file to write the reslts.
 
 Output:
@@ -77,17 +77,17 @@ Input:
 - `model_dir`: The path to the directory containing the model of the device that the decoded pcap file samples.
 
 Output:
-The script decodes the input pcap file and stores the decoded data in a user-intermediates/ directory. If a file containing the decoded data already exists, the file will not be regenerated. The script then outputs a CSV file containing the predictions made by the model and the decoded data. If the output file already exists, the script will overwrite the file.
+The script decodes the input pcap file and stores the decoded data in a `user-intermediates/` directory. If a file containing the decoded data already exists, the file will not be regenerated. The script then outputs a CSV file containing the predictions made by the model and the decoded data. If the output file already exists, the script will overwrite the file.
 
 ## Non-scripts
 
 ### list_exp.txt
 A list of input pcap files containing network traffic data from several different devices. The directory structure of the input pcap files should be: `{root_experiment_directory/directories}/{device}/{experiment}/input.pcap`. For example, `traffic/us/yi-camera/power/2019-04-25_19:28:58.154s.pcap`:
 
-- `traffic/us/` is the root experiment directory
-- `yi-camera/` is the device directory
-- `power/` is the experiment directory
-- `2019-04-25_19:28:58.154s.pcap` is the input pcap file
+- `traffic/us/` is the root experiment directory.
+- `yi-camera/` is the device directory.
+- `power/` is the experiment directory.
+- `2019-04-25_19:28:58.154s.pcap` is the input pcap file.
 
 ### Model.md
 A file which further explains the models.
@@ -105,7 +105,7 @@ The README.
 The software that should be installed before running this pipeline.
 
 ### sample-yi-camera-recording.pcap
-A sample pcap file for demonstration that can be used to predict the amount of device activity based on the traffic in the file.
+A sample pcap file for demonstration that can be used to predict the device activity based on the traffic in the file.
 
 ### traffic/
 A directory with raw pcap data from several devices.

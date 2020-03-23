@@ -4,18 +4,18 @@ This site contains analysis code accompanying the paper "Information Exposure Fr
 
 The official paper page can be found at https://moniotrlab.ccis.neu.edu/imc19/. The page contains instructions for requesting access to the full dataset.
 
-The testbed code and documentation can be found at https://moniotrlab.ccis.neu.edu/tools/. Currently it is deployed at both Northeastern University and Imperial College London. 
+The testbed code and documentation can be found at https://moniotrlab.ccis.neu.edu/tools/. Currently, it is deployed at both Northeastern University and Imperial College London. 
 
 ![GitHub Logo](lab.png)
 
 ## File Structure 
-Each subfolder shows samples of processing each PCAP file for destination, encryption, and content analysis.
+Each subfolder shows samples of processing each pcap file for destination, encryption, and content analysis.
 
-- `README.md` - This file
-- `moniotr/` - Code to automate experiments  
-- `destinations/` - Code for Section 4. Destination Analysis   
-- `encryption/` - Code for Section 5. Encryption Analysis   
-- `model/` - Code for Section 6. Content Analysis   
+- `README.md` - this file.
+- `moniotr/` - code to automate experiments.
+- `destinations/` - code for Section 4. Destination Analysis.
+- `encryption/` - code for Section 5. Encryption Analysis.
+- `model/` - code for Section 6. Content Analysis.
 
 ## Datasets
 We release the traffic (packet headers) from 34,586 controlled experiments and 112 hours of idle IoT traffic.

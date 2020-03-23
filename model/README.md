@@ -28,7 +28,7 @@ Definition of the device activity: tag name
 - `intermediate_dir`: The path to the directory to place the decoded pcap files.
 - `features_dir`: The path to the directory to place the analyzed files.
 - `model_dir`: The path to the directory to place the generated models.
-- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict the amount of device activity. This should be the same name as the device directory (see the `list_exp.txt` section in [model-details.md](model-details..md) below) that the input pcap file is in.
+- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict the amount of device activity. This should be the same name as the device directory (see the `list_exp.txt` section in [model-details.md](model-details.md) below) that the input pcap file is in.
 - `pcap_path`: The path to the pcap file that will be used to predict the amount of device activity.
 - `result_path`: The path to a CSV file to write the reslts.
 

@@ -69,8 +69,8 @@ Options:
                         addrPacketSize or addrPacketNum.
 ```
 Required options:
-- The -i options is required. This is the path to the input PCAP file to be processed.
-- The MAC address of the device whose traffic is recorded in the PCAP file is also needed. Inputting the MAC address can be done in two ways:
+- The -i options is required. This is the path to the input pcap file to be processed.
+- The MAC address of the device whose traffic is recorded in the pcap file is also needed. Inputting the MAC address can be done in two ways:
   - Input the MAC address using the -m option.
   - Input the device name in the -d option, and input the file name to a list of devices using the -c option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
 
@@ -102,7 +102,7 @@ All traffic is included in the "eth" (ethernet) protocol, so to analyse all sent
 - `TSharkHost` - uses the list produced by the `tshark` utility, which extracts hosts from the `.pcap` file. If a domain is not found, reverse DNS lookup is used.
 
 ### Output
-When analyse.py is run, a csv containing an analysis of the input PCAP file is produced. By default, the CSV is stored in experiment.csv. However, the output file name can be changed by using the -o option. If the requested output file name already exists, the program will append the new data instead of overwriting.
+When analyse.py is run, a csv containing an analysis of the input pcap file is produced. By default, the CSV is stored in experiment.csv. However, the output file name can be changed by using the -o option. If the requested output file name already exists, the program will append the new data instead of overwriting.
 
 The CSV file has 15 headings. Their meanings are listed below:
 
@@ -122,7 +122,7 @@ The CSV file has 15 headings. Their meanings are listed below:
 - `input_file` - the input pcap file while the data was generated from.
 - `organisation` - the organisation that the IP address belongs to. If not found, "N/A" is displayed.
 
-If graphs are produced, they will be stored in the figures/ directory by default. The output directory can be changed by using the -f option. Each time analyse.py is run, exactly one PNG file is produced if one or more -g options are specified. The PNG file contains all the graphs specified. The name of the PNG file is the argument given into the -i option followed by the type(s) of graphs produced.
+If graphs are produced, they will be stored in the `figures/` directory by default. The output directory can be changed by using the -f option. Each time analyse.py is run, exactly one PNG file is produced if one or more -g options are specified. The PNG file contains all the graphs specified. The name of the PNG file is the argument given into the -i option followed by the type(s) of graphs produced.
 
 ## Current Issues
 This script is still being developed. Therefore, there are still a few issues. The information above conveys how the script should function ideally, but it may not completely do so. Known issues are listed below:
