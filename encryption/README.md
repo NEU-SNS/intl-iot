@@ -33,11 +33,11 @@ The CSV file has ten headings. Their meanings are listed below:
 
 - `ip_src` - the IP address of the source.
 - `ip_dest` - the IP address of the destination.
-- `srcport` - the transport layer source port number
-- `dstport` - the transport layer destination port number
-- `tp_proto` - the transport layer protocol
-- `data_proto` - the application layer protocol
-- `data_type` - the data type. Either unknown, text, media, compressed, or encrypted
+- `srcport` - the transport layer source port number.
+- `dstport` - the transport layer destination port number.
+- `tp_proto` - the transport layer protocol.
+- `data_proto` - the application layer protocol.
+- `data_type` - the data type. Either unknown, text, media, compressed, or encrypted.
 - `data_len` - the length of the data in bytes.
-- `entropy` - the entropy of the data
-- `reason` - information about the output
+- `entropy` - the entropy of the data.
+- `reason` - information about the output.
