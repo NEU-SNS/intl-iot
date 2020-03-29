@@ -5,10 +5,12 @@ destination/iot-data/
 destination/iot-idle/
 destination/trafficAnalyzer/__pycache__/
 destination/experiment.csv
+encryption/.ipynb_checkpoints/
 encryption/validation/synthetic/
 encryption/validation/key.key
 encryption/sample.csv
 encryption/sample.json
+model/.ipynb_checkpoints/
 model/features/
 model/tagged-intermediate/
 model/tagged-models/

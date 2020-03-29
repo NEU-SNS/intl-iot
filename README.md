@@ -7,6 +7,7 @@ The official paper can be found at https://moniotrlab.ccis.neu.edu/imc19/. The s
 The testbed code and documentation can be found at https://moniotrlab.ccis.neu.edu/tools/. Currently, it is deployed at both Northeastern University and Imperial College London. 
 
 ![GitHub Logo](lab.png)
+
 Figure 1: The IoT Lab at Northeastern University.
 
 ## File Structure 
@@ -62,6 +63,6 @@ pip install ipwhois
 pip install psutil
 ```
 
-For more information about the pipelines and the contents of the code, see the READMEs for [destination analysis](destination/README.md), [encryption analysis](encryption/README.md), and [content analysis](model/README.md). Content analysis also has a page describing the contents of that directory in dept: [model/model_details.md](model/model_details.md).
+For more information about the pipelines and the contents of the code, see the READMEs for [destination analysis](destination/README.md), [encryption analysis](encryption/README.md), and [content analysis](model/README.md). Content analysis also has a page describing the contents of that directory in depth: [model/model_details.md](model/model_details.md).
 
-For step-by-step instructions to get started analysising data, see [Getting_Started.md](Getting_Started.md).
+For step-by-step instructions to get started analyzing data, see [Getting_Started.md](Getting_Started.md).

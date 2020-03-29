@@ -4,7 +4,7 @@
 For a specified device, given a sequence of network frames, what is the device activity?
 
 Examples:
-- device:  amcrest-cam-wiredd
+- device:  amcrest-cam-wired
 - network traffic: 10 minutes of network traffic
 - device activity: one of 
     - movement
