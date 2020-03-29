@@ -8,7 +8,7 @@ if len(sys.argv) < 3:
     print('usage: %s plaintext-file encrypt-file' % sys.argv[0])
     exit(0)
 input_file = sys.argv[1]
-output_file=sys.argv[2]
+output_file = sys.argv[2]
 with open(input_file, 'rb') as f:
     data = f.read()
 
@@ -55,9 +55,9 @@ if os.path.exists('private_key.pem') and os.path.exists('public_key.pem'):
         public_key = serialization.load_pem_public_key(key_file.read(), backend=default_backend())
 else:
     private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
+        public_exponent = 65537,
+        key_size = 2048,
+        backend = default_backend()
     )
     public_key = private_key.public_key()
     pem = private_key.private_bytes(

@@ -7,8 +7,8 @@ if len(sys.argv) < 3:
     print('\t1:encryted')
     print('\t0:not encryted')
     exit(0)
-inputfile=sys.argv[1]
-is_enc=sys.argv[2]
+inputfile = sys.argv[1]
+is_enc = sys.argv[2]
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -16,11 +16,11 @@ try:
 except socket.error as err:
     print("socket creation failed with error %s" % (err))
 
-enc_port=12345
-plain_port=12346
-video_port=12347
-venc_port=12348
-ssl_port=8443
+enc_port = 12345
+plain_port = 12346
+video_port = 12347
+venc_port = 12348
+ssl_port = 8443
 
 # default port for socket
 if is_enc == '1' :
@@ -34,7 +34,7 @@ elif is_enc == 'vp': # vidoe plain
 
 host = 'localhost'
 
-data=open(inputfile, 'rb').read()
+data = open(inputfile, 'rb').read()
 
 try:
     host_ip = socket.gethostbyname(host)

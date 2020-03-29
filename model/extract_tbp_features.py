@@ -26,26 +26,29 @@ root_feature = ''
 random_ratio = 0.8
 num_per_exp = 10
 
+RED = "\033[31;1m"
+END = "\033[0m"
+
 def usage():
-    print("Usage: python %s in_intermediate_dir out_features_dir\n" % os.path.basename(__file__))
+    print("Usage: python %s in_intermediate_dir out_features_dir\n" % sys.argv[0])
     print("Performs statistical analysis on decoded pcap files.\n")
-    print("Example: %s tagged-intermediate/us/ features/us/\n" % os.path.basename(__file__))
+    print("Example: python %s tagged-intermediate/us/ features/us/\n" % sys.argv[0])
     print("Arguments:")
-    print("  in_intermediate_dir: Path to a directory containing text files of human-readable raw pcap data")
+    print("  in_intermediate_dir: Path to a directory containing text files of human-readable")
+    print("                       raw pcap data")
     print("  out_features_dir: Path to the directory to write the analyzed CSV files")
 
 def main():
     global root_exp, root_feature
     
-    print("\nPerforming statistical analysis...")
-    print("Running extract_tbp_features.py...")
+    print("Running %s..." % sys.argv[0])
 
     if len(sys.argv) != 3:
-        print("\033[31mError: 2 Arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
+        print("%sError: 2 arguments required. %d arguments found.%s" % (RED, (len(sys.argv) - 1), END))
         usage()
         return 0
     if not os.path.isdir(sys.argv[1]):
-        print("\033[31mError: Input directory %s does not exist!\033[39m" % sys.argv[1])
+        print("%sError: Input directory %s does not exist!%s" % (RED, sys.argv[1], END))
         usage()
         return 0
 
@@ -76,7 +79,7 @@ def prepare_features():
         full_dir_device = root_exp + '/' + dir_device
         if os.path.isdir(full_dir_device) == False: continue
         for dir_exp in os.listdir(full_dir_device):
-            full_dir_exp =  full_dir_device + '/' + dir_exp
+            full_dir_exp = full_dir_device + '/' + dir_exp
             if os.path.isdir(full_dir_exp) == False: continue
             for intermediate_file in os.listdir(full_dir_exp):
                 full_intermediate_file = full_dir_exp + '/' + intermediate_file
@@ -157,7 +160,7 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
     num_pkts = int(num_total * random_ratio)
     for di in range(0, num_per_exp):
         random_indices = list(np.random.choice(num_total, num_pkts))
-        random_indices=sorted(random_indices)
+        random_indices = sorted(random_indices)
         pd_obj = pd_obj_all.loc[random_indices, :]
         d = compute_tbp_features(pd_obj, deviceName, state)
         feature_data = feature_data.append(pd.DataFrame(data=[d], columns=c))

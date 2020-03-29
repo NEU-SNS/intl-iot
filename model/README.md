@@ -3,34 +3,33 @@
 Content Analysis generates a machine learning model that can predict the device activity given the network traffic of that device.
 
 ## Setup
-Dependencies: pip3 install -r requirements.txt   
-We need python3 to run the scripts. 
+Python 3.6 is required to run this code. Please follow the steps under General Setup in [Getting_Started.md](../Getting_Started.md#general-setup) before continuing.
 
-Download [Google Drive > iot-model.tgz](https://drive.google.com/open?id=1lMqZ5qx6ATqIIiLOdTYcSm6RliK1F7vA) (size = ~127MB) before running the Juypter Notebook.
+Install the dependencies: `pip install -r requirements.txt`
 
 ## Information about the Model
-More explanations on ML models: [Model.md](Model.md)
+For an explanation about the machine learning models: [model_info.md](model_info.md)
 
 Definition of the device activity: tag name 
 [gdoc exp](https://docs.google.com/document/d/1_s6brtocKG0zpdTVNWOxZZdJ1WSkJKKw9gbZh_32WJU/edit)
 
 ## Usage
-[model_sample.ipynb](model_sample.ipynb) walks you through steps that trains a model from traffic of experiments and uses the model to classify (predict) a new traffic observed.
+The Jupyter Notebook [model_sample.ipynb](model_sample.ipynb) is a step-by-step guide that shows how to train a model using network traffic and how to use the model to classify (predict) a new traffic observed.
 
-`model.sh` is an equivalent to the Jupyter Notebook, which can be run directly in the terminal. To ananalyze the example data provided, run the following command:
+`model.sh` is an equivalent to the Jupyter Notebook, which can run directly in the terminal. To ananalyze the example data provided, run the following command:
 
-```
-./model.sh list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera sample-yi-camera-recording.pcap sample-result.csv
-```
+Usage: `./model.sh exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path`
+
+Example: `./model.sh exp_list.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera yi_camera_sample.pcap sample.csv`
 
 ### Input
-- `exp_list`: The text file that contains paths to pcap files to analyze to generate the models. To see the format of this text file, please see the `list_exp.txt` section of [model-details.md](model-details.md).
-- `intermediate_dir`: The path to the directory to place the decoded pcap files.
-- `features_dir`: The path to the directory to place the analyzed files.
-- `model_dir`: The path to the directory to place the generated models.
-- `device_name`: The name of the device that generated the data in the pcap file that will be used to predict the amount of device activity. This should be the same name as the device directory (see the `list_exp.txt` section in [model-details.md](model-details.md) below) that the input pcap file is in.
-- `pcap_path`: The path to the pcap file that will be used to predict the amount of device activity.
-- `result_path`: The path to a CSV file to write the reslts.
+- `exp_list` - the text file that contains paths to input pcap files to generate the models. To see the format of this text file, please see the `exp_list.txt` section of [model_details.md](model_details.md#exp_listtxt).
+- `intermediate_dir` - the path to the directory where the script will create and put decoded pcap files.
+- `features_dir` - the path to the directory where the script will create and put analyzed files.
+- `model_dir` - the path to the directory where the script will create and put generated models.
+- `device_name` - the name of the device that generated the data in the pcap file of unknown device activity. This argument should match the name of a `device_name` directory (see the `exp_list.txt` section in [model_details.md](model_details.md#exp_listtxt)).
+- `pcap_path` - the path to the pcap file of unknown device activity.
+- `result_path` - the path to a CSV file to write the results.
 
 ### Output
 This script produces a CSV file that contains the prediction of the state of the device given the network traffic in the input file. If the CSV exists, the script will overwrite it. Several intermediate files and directories are also produced, as described above.
@@ -43,3 +42,5 @@ The CSV file has six headings. Their meanings are listed below:
 - `num_pkt` - the number of packets in the input pcap file.
 - `state` - the predicted state that the device was in when the pcap file was created.
 - `device` - the device name that the data in the pcap file was recorded on.
+
+For more information about the files and directories in this section, see [model_details.md](model_details.md).

@@ -2,6 +2,8 @@
 Created by JJ
 Created at 2/11/2019
 
+Updated by Derek Ng in 2020
+
 CSVFILE: ip_src,ip_dst,srcport,dstport,tp_proto,data_proto,data_type,data_len,entropy,reason
 """
 import json
@@ -60,18 +62,22 @@ list_compressed = ['gzip', 'tar']
 """
 If save to a smaller JSON file, by default is False
 """
-saveSmaller=False
-TH_DATA_LEN_EMPTY=4
-TH_DATA_LEN_OMIT=20
-TH_DATA_LEN_MEANINGFUL=100
-TH_HIGH=0.9
-TH_LOW=0.4
-TH_ENCRYPTED=0.8
+saveSmaller = False
+TH_DATA_LEN_EMPTY = 4
+TH_DATA_LEN_OMIT = 20
+TH_DATA_LEN_MEANINGFUL = 100
+TH_HIGH = 0.9
+TH_LOW = 0.4
+TH_ENCRYPTED = 0.8
+
+RED = "\033[31;1m"
+END = "\033[0m"
 
 def usage():
     print("Usage: %s json_file csv_file\n" % sys.argv[0])
-    print("Uses the JSON file to output a CSV file that includes the entropy of each packet and its classification (encrypted, text, media, unknown).\n")
-    print("Example: %s output/traffic.json output/traffic.csv\n" % sys.argv[0])
+    print("Uses the JSON file to output a CSV file that includes the entropy of each packet")
+    print("and its classification (encrypted, text, media, unknown).\n")
+    print("Example: python %s sample.json sample.csv\n" % sys.argv[0])
     print("Arguments:")
     print("  json_file: The output json file from running TShark")
     print("  csv_file: The output csv file of this script")
@@ -82,21 +88,21 @@ def main():
     jsonfile = sys.argv[1]
     csvfile = sys.argv[2]
     
-    print("Performing error checking on command line arguments...")
+    print("Checking arguments...")
     if len(sys.argv) != 3:
-        print("\033[31mError: 2 arguments expected. %s arguments found.\033[39m" % len(sys.argv))
+        print("%sError: 2 arguments expected. %s arguments found.%s" % (RED, len(sys.argv), END))
         usage()
 
     done = False
     if not jsonfile.endswith(".json"):
         done = True
-        print("\033[31mError: The file \"%s\" is not a JSON file.\033[39m" % jsonfile)
+        print("%sError: The file \"%s\" is not a JSON file.%s" % (RED, jsonfile, END))
     elif not os.path.isfile(jsonfile):
         done = True
-        print("\033[31mError: The file \"%s\" does not exist.\033[39m" % jsonfile)
+        print("%sError: The file \"%s\" does not exist.%s" % (RED, jsonfile, END))
     if not csvfile.endswith(".csv"):
         done = True
-        print("\033[31mError: The file \"%s\" is not a CSV file.\033[39m" % csvfile)
+        print("%sError: The file \"%s\" is not a CSV file.%s" % (RED, csvfile, END))
 
     if done:
         usage()
@@ -107,7 +113,7 @@ def main():
         # open(outfile, 'w').write('\n'.join(forout))
         print("Writing to \"%s\"..." % csvfile)
         dirname = os.path.dirname(csvfile)
-        if not os.path.isdir(dirname):
+        if dirname != '' and not os.path.isdir(dirname):
             os.makedirs(dirname)
         
         with open(csvfile, 'w') as cf:
@@ -115,7 +121,7 @@ def main():
             n_rows = 0
             for row in forpd:
                 if row is not None:
-                    n_rows+=1
+                    n_rows += 1
                     cf.write('%s\n' % ','.join(map(str, row)))
             print('Results -> %s (%s packets)' % (csvfile, n_rows))
 
