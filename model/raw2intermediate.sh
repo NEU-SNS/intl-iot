@@ -15,12 +15,15 @@ usage() {
 }
 
 echo -e "\nTranslating raw pcaps into human-readable form..."
-echo "Running raw2intermediate.sh..."
+echo "Running $0..."
+
+red="\e[31;1m"
+end="\e[0m"
 
 #Check for 2 arguments
-if [ $# != 2 ]
+if [ $# -ne 2 ]
 then
-    echo -e "\e[31mError: 2 arguments required. $# arguments found.\e[39m"
+    echo -e "${red}Error: 2 arguments required. $# arguments found.$end"
     usage
 fi
 
@@ -30,11 +33,11 @@ dirIntermediate=$2
 #Check that exp_list is a .txt file and exists
 if [[ $inputFile != *.txt ]]
 then
-    echo -e "\e[31mError: Input file must be a text file (.txt). Received $1\e[39m"
+    echo -e "${red}Error: Input file must be a text file (.txt). Received $1.$end"
     usage
 elif ! [ -e $inputFile ]
 then
-    echo -e "\e[31Error: The input file $inputFile does not exist.\e[39m"
+    echo -e "${red}Error: The input file $inputFile does not exist.$end"
 fi
 
 extract_pcap() {
@@ -69,10 +72,10 @@ do
     #Check that files in input file exist and are .pcap files
     if ! [ -e $line ]
     then
-        echo -e "\e[31mThe file $line does not exist!\e[39m\n"
+        echo -e "${red}The file $line does not exist!$end\n"
     elif ! [[ $line == *.pcap ]]
     then
-        echo -e "\e[31mThe file $line is not a .pcap file!\e[39m\n"
+        echo -e "${red}The file $line is not a .pcap file!$end\n"
     else
         #Parse pcap file name
         dname=`dirname $line`

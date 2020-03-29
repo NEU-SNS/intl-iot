@@ -58,7 +58,7 @@ def load_list(fn, col_index=0, comment='#', split_char='\t', allow_repeat=False)
     with open(fn) as ff:
         for line in ff.readlines():
             line = line.strip()
-            if line=='' or line.startswith(comment):
+            if line == '' or line.startswith(comment):
                 continue
             cols = line.split(split_char)
             if len(cols) < col_index+1:

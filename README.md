@@ -1,15 +1,16 @@
 # Information Exposure From Consumer IoT Devices
 
-This site contains analysis code accompanying the paper "Information Exposure From Consumer IoT Devices: A Multidimensional, Network-Informed Measurement Approach," in proceedings of the ACM Internet Measurement Conference 2019 (IMC 2019), October 2019, Amsterdam, Netherlands. 
+This site contains analysis code accompanying the paper "Information Exposure From Consumer IoT Devices: A Multidimensional, Network-Informed Measurement Approach" in proceedings of the ACM Internet Measurement Conference 2019 (IMC 2019), October 2019, Amsterdam, Netherlands. 
 
-The official paper page can be found at https://moniotrlab.ccis.neu.edu/imc19/. The page contains instructions for requesting access to the full dataset.
+The official paper can be found at https://moniotrlab.ccis.neu.edu/imc19/. The site also contains instructions for requesting access to the full dataset.
 
 The testbed code and documentation can be found at https://moniotrlab.ccis.neu.edu/tools/. Currently, it is deployed at both Northeastern University and Imperial College London. 
 
 ![GitHub Logo](lab.png)
+Figure 1: The IoT Lab at Northeastern University.
 
 ## File Structure 
-Each subfolder shows samples of processing each pcap file for destination, encryption, and content analysis.
+Each subfolder shows samples for processing pcap files for destination, encryption, and content analysis.
 
 - `README.md` - this file.
 - `moniotr/` - code to automate experiments.
@@ -26,7 +27,7 @@ To obtain access to the dataset, please follow the instructions on the paper web
 This is out of an abundance of caution to protect any private or security-sensitive information that we were unable to remove from the traces.
 
 ## Setup
-This version relies on version Python 3.6 (tested on Python 3.6.3).
+This version relies on Python 3.6 (tested on Python 3.6.3).
 
 It is strongly suggested that one uses the following virtual environment:
 ```
@@ -41,7 +42,7 @@ source env/bin/activate
 ```
 
 Once the environment is setup and running, install the following packages:
-````
+```
 pip install numpy
 pip install scipy
 pip install pyshark
@@ -59,5 +60,8 @@ pip install tldextract
 pip install python-whois
 pip install ipwhois
 pip install psutil
-````
+```
 
+For more information about the pipelines and the contents of the code, see the READMEs for [destination analysis](destination/README.md), [encryption analysis](encryption/README.md), and [content analysis](model/README.md). Content analysis also has a page describing the contents of that directory in dept: [model/model_details.md](model/model_details.md).
+
+For step-by-step instructions to get started analysising data, see [Getting_Started.md](Getting_Started.md).

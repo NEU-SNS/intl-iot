@@ -8,9 +8,9 @@ import whois
 import pandas as pd
 
 class IPResolver(object):
-    def __init__(self, ipMapping):
-        self.ipCity = geoip2.database.Reader('./geoipdb/GeoLite2-City.mmdb')
-        self.ipCountry = geoip2.database.Reader('./geoipdb/GeoLite2-Country.mmdb')
+    def __init__(self, ipMapping, geoDbCity, geoDbCountry):
+        self.ipCity = geoip2.database.Reader(geoDbCity)
+        self.ipCountry = geoip2.database.Reader(geoDbCountry)
         self.ipMap = ipMapping
         #self.ripeProbe = RipeProbe() #RipeCountry argument to the -l option, commented out because SQL database missing
 

@@ -5,7 +5,7 @@ import sys
 hostname = '127.0.0.1'
 if len(sys.argv) < 2:
     exit(0)
-inputfile=sys.argv[1]
+inputfile = sys.argv[1]
 print('\tRead file %s' % inputfile)
 # msg = b"HEAD / HTTP /1.0\r\nHost: linuxfr.org\r\n\r\n"
 msg = open(inputfile).read()

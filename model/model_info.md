@@ -1,6 +1,6 @@
-## ML models to detect device activity 
+## ML Models to Detect Device Activity 
 
-### Problem statement   
+### Problem Statement
 For a specified device, given a sequence of network frames, what is the device activity?
 
 Examples:
@@ -16,8 +16,7 @@ Examples:
     
 **++ Cases**: the 10' traffic could have more than one activity.     
 
-
-### ML
+### Machine Learning
 
 During evaluation, we use following algorithms:
 - rf:  [RandomForestClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html) (supervised)
@@ -25,8 +24,7 @@ During evaluation, we use following algorithms:
 - kmeans: [MiniBatchKMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.MiniBatchKMeans.html) (unsupervised)
 - dbscan: [DBSCAN](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html) (unsupervised)
 
-For the purpose of IMC submission, we don't consider unsupervised approach (i.e. kmeans, dbscan).  
-
+For the purpose of IMC submission, we don't consider unsupervised approaches (i.e. kmeans, dbscan).  
 
 ### Variables in sklearn:
 N samples of M features of L classes
@@ -46,4 +44,3 @@ N samples of M features of L classes
 -  _complete: refer to [completeness_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.completeness_score.html#sklearn.metrics.completeness_score)
     > This metric is independent of the absolute values of the labels: a permutation of the class or cluster label values won’t change the score value in any way.
 -  _silhouette: [silhouetee_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html#sklearn.metrics.silhouette_score)
-    

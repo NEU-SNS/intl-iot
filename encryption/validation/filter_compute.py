@@ -29,9 +29,9 @@ DT_TEXT = 'text'
 DT_MEDIA = 'media'
 DT_COMPRESSED = 'compressed'
 DT_ENCRYPTED = 'encrypted'
-DT_OMIT='omit'
+DT_OMIT = 'omit'
 
-result_header='ip_src,ip_dst,srcport,dstport,tp_proto,data_proto,data_type,data_len,entropy,reason'
+result_header = 'ip_src,ip_dst,srcport,dstport,tp_proto,data_proto,data_type,data_len,entropy,reason'
 list_possible_data_layers = ['http', 'dns', 'ntp', 'bootp', 'ssl', 'rtp',
                              'mqtt', 'rtc', 'rtsp', 'bootp', 'dtls', 'mdns',
                              'thrift', 'ssdp', 'stun']
@@ -59,17 +59,17 @@ list_compressed = ['gzip', 'tar']
 """
 If save to a smaller JSON file, by default is False
 """
-saveSmaller=False
-TH_DATA_LEN=4
-TH_HIGH=0.9
-TH_LOW=0.4
-TH_ENCRYPTED=0.8
-enc_port=12345
-plain_port=12346
-video_port=12347
-venc_port=12348
-ssl_port=8443
-ssl_real_port=443
+saveSmaller = False
+TH_DATA_LEN = 4
+TH_HIGH = 0.9
+TH_LOW = 0.4
+TH_ENCRYPTED = 0.8
+enc_port = 12345
+plain_port = 12346
+video_port = 12347
+venc_port = 12348
+ssl_port = 8443
+ssl_real_port = 443
 
 def main():
     if len(sys.argv) < 4:
@@ -273,7 +273,7 @@ def compute_pkt(ek_obj, tp_layer, list_detected_layers):
         data_type = DT_MEDIA
     elif tmp_dst_port == venc_port:
         data_type = DT_ENCRYPTED + '+' + DT_MEDIA
-    elif tmp_dst_port == ssl_port or tmp_dst_port ==  ssl_real_port or data_proto == 'ssl':
+    elif tmp_dst_port == ssl_port or tmp_dst_port == ssl_real_port or data_proto == 'ssl':
         pass
     else:
         return

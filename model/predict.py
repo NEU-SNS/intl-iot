@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 from scipy.stats import kurtosis
 from scipy.stats import skew
 from statsmodels import robust
+
 dir_online_features = 'online_features'
 columns_intermediate = ['frame_no', 'ts', 'ts_delta','protocols', 'frame_len', 'eth_src', 'eth_dst',
                         'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport', 'http_host', 'sni', 'udp_srcport', 'udp_dstport']
@@ -19,25 +20,27 @@ columns_state_features = [ "meanBytes", "minBytes", "maxBytes", "medAbsDev", "sk
 columns_detect_sequence = ['ts', 'ts_end', 'ts_delta', 'num_pkt', 'state']
 save_extracted_features = False
 
+RED = "\033[31;1m"
+END = "\033[0m"
+
 def usage():
-    print("Usage: python3 %s device_name pcap_path result_file model_dir\n" % os.path.basename(__file__))
+    print("Usage: python %s device_name pcap_path result_file model_dir\n" % sys.argv[0])
     print("Uses a model to predict the device activity given network traffic of that device.\n")
-    print("Example: python3 -W ignore %s yi-camera sample-yi-camera-recording.pcap sample-result.csv tagged-models/us/\n" % os.path.basename(__file__))
+    print("Example: python -W ignore %s yi-camera yi_camera_sample.pcap sample.csv tagged-models/us/\n" % sys.argv[0])
     print("Arguments:")
-    print("  device_name: The name of the device that the decoded pcap file contains network traffic of")
-    print("  pcap_path Path to the network activity in a pcap file")
+    print("  device_name: The name of the device that is being recorded in the input pcap file")
+    print("  pcap_path Path to the pcap file with unknown network activity")
     print("  result_file: Path to a CSV file to write results")
-    print("  model_dir: Path to the directory containing the model of the device that the decoded pcap file samples")
+    print("  model_dir: Path to the directory containing the model of device_name")
     exit(0)
 
 def main():
     global dir_models
 
-    print("\nPredicting amount of inferable device activity from pcap file...")
-    print("Running predict.py...")
+    print("Running %s..." % sys.argv[0])
 
     if len(sys.argv) != 4 and len(sys.argv) != 5:
-        print("\033[31mError: 4 arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
+        print("%sError: 4 arguments required. %d arguments found.%s" % (RED, (len(sys.argv) - 1), END))
         usage()
 
     device = sys.argv[1]
@@ -48,25 +51,25 @@ def main():
 
     errors = False
     if not pcap_path.endswith('.pcap'):
-        print("\033[31mError: %s is not a pcap file.\033[39m" % pcap_path)
+        print("%sError: %s is not a pcap file.%s" % (RED, pcap_path, END))
         errors = True
     elif not os.path.isfile(pcap_path):
-        print("\033[31mError: The pcap file %s does not exist!\033[39m" % pcap_path)
+        print("%sError: The pcap file %s does not exist!%s" % (RED, pcap_path, END))
         errors = True
     if not file_result.endswith('.csv'):
-        print("\033[31mError: Output file %s should be a CSV!\033[39m" % file_result)
+        print("%sError: Output file %s should be a CSV!%s" % (RED, file_result, END))
         errors = True
     if not os.path.isdir(dir_models):
-        print("\033[31mError: The model directory %s does not exist!\033[39m" % dir_models)
+        print("%sError: The model directory %s does not exist!%s" % (RED, dir_models, END))
         errors = True
     else:
         file_model = '%s/%s.model' % (dir_models, device)
         file_labels = '%s/%s.label.txt' % (dir_models, device)
         if not os.path.isfile(file_model):
-            print("\033[31mError: The model file %s cannot be found. Please regenerate file, check directory name, or check device name.\033[39m" % file_model)
+            print("%sError: The model file %s cannot be found. Please regenerate file, check directory name, or check device name.%s" % (RED, file_model, END))
             errors = True
         if not os.path.isfile(file_labels):
-            print("\033[31mError: The label file %s cannot be found. Please regenerate file, check directory name, or check device name.\033[39m" % file_labels)
+            print("%sError: The label file %s cannot be found. Please regenerate file, check directory name, or check device name.%s" % (RED, file_labels, END))
             errors = True
 
     if errors:

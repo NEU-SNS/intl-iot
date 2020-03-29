@@ -12,16 +12,15 @@ import pickle
 import ipwhois
 
 """
-
 output column: ip,org,country,asn,asn_country_code,asn_description
 """
 
-cache=_config.cachepassport
-file_result=_config.outfileippassport
-file_missing=_config.outfileippassportmissing
+cache = _config.cachepassport
+file_result = _config.outfileippassport
+file_missing = _config.outfileippassportmissing
 omitted_ip = _config.router_ip
 omitted_ip.extend(['0.0.0.0', '255.255.255.255'])
-REQUEST_URL='https://passport.ccs.neu.edu/api/v1/locateip'
+REQUEST_URL = 'https://passport.ccs.neu.edu/api/v1/locateip'
 start_ts = time.time()
 def main():
     all_ip = pd.read_csv(_config.infile)['ip'].drop_duplicates().dropna()
@@ -29,7 +28,7 @@ def main():
 
     filtered = filter_ip(all_ip)
     print('Number of filtered IPs: %s' % len(filtered))
-    t0=time.time()
+    t0 = time.time()
     manual_whois = _util.load_dict(_config.manualfile, sep=',')
     finished = send_tasks(filtered)
     t1 = time.time()
@@ -42,7 +41,7 @@ def send_tasks(list_ip):
     list_missing = []
 
     # with open(file_result, 'w') as ff:
-    no=0
+    no = 0
     for ip in list_ip:
         no += 1
         print('%d %s (%ss)' % (no, time.time(), time.time()-start_ts))
@@ -89,7 +88,7 @@ def query_passport(ip):
             print(result_text)
             traceback.print_exc()
             return
-    st=1
+    st = 1
     print('\tsleep for %ds...' % st)
     time.sleep(st)
     if finished:

@@ -1,12 +1,12 @@
 ## Validation of threshold for encryption classification
 
-Download [Google Drive > sythetic.tgz](https://drive.google.com/open?id=1zGIGiVJM2KV0rEiYfQdvxWTHNrxi02_F) before running any scripts.
+Go to https://moniotrlab.ccis.neu.edu/imc19/ to request the data set before running any scripts. Once accesss is granted, download `sythetic.tgz` and untar it to this directory.
 
 **Prep.** `synthetic/f*.txt` are text from the IMC 2019 site. Run `mass_enc.sh` to generate encryted version in the same folder.
 
-**Validation of symmetric.** To create some synthetic examples of encrypted vs. plaintext ASCII data sent over either TCP or UDP, we run a local server and a local client. For simplicity, we use python socket for the communication, and we collect local network traffic on the port 12345 (encrypted) and 12346 (plain) by using wireshark/tshark, usually it is the lo0 interface. 
+**Validation of symmetric.** To create some synthetic examples of encrypted vs. plaintext ASCII data sent over either TCP or UDP, we run a local server and a local client. For simplicity, we use a python socket for the communication, and we collect local network traffic on the port 12345 (encrypted) and 12346 (plain) by using wireshark/tshark, usually it is the lo0 interface. 
 
-**Validation of various TLS ciphers.** We use the Python SSL library to test available cipher suites in a local machine. The list is not exhausted; from what we see, the variance is relatively small. 
+**Validation of various TLS ciphers.** We use the Python SSL library to test available cipher suites in a local machine. The list is not exhaustive; from what we see, the variance is relatively small. 
 
 ### Symmetric Encryption Traffic Sampling 
 All the data has been generated to the `synthetic/` directory. If you want to add more experiments, follow steps for plain/encrypted traffic generation to add support for more encryption schemes and protocols. 

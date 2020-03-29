@@ -5,7 +5,7 @@ import os
 from . import Stats, IP, Constants
 
 class PlotManager(object):
-    def __init__(self, stats, graphs, options):
+    def __init__(self, stats, graphs, options, geoDbCity, geoDbCountry):
         self.graphs = graphs
         self.subPlotCounter = 1
         self.stats = stats
@@ -61,7 +61,7 @@ class PlotManager(object):
 
         self.lp.plotFig()
 
-    def generatePiePlot(self, options, className):
+    def generatePiePlot(self, options, className, geoDbCity, geoDbCountry):
         self.pp = globals()[className](self.stats, plt, self.ipMap)
         for protocol in options.protocol.split(','):
             self.pp.splitIPBy(protocol, options.ipLoc, options.ipAttr)
@@ -186,9 +186,9 @@ class BarPlot(LinePlot):
             self.plot.bar(self.x[i], self.y[i])
 
 class PiePlot(DataPresentation):
-    def __init__(self, stats, plot, ipMapping):
+    def __init__(self, stats, plot, ipMapping, geoDbCity, geoDbCountry):
         super().__init__(stats, plot)
-        self.ipResolver = IP.IPResolver(ipMapping)
+        self.ipResolver = IP.IPResolver(ipMapping, geoDbCity, geoDbCountry)
 
     def splitIPBy(self, layer, method, field = "addrPacketSize", reset = False):
         if reset:
@@ -205,13 +205,6 @@ class PiePlot(DataPresentation):
             print("{}: There is no traffic for protocol {}".format(__class__, layer))
 
     def plotFig(self):
-        print(self.dataDict)
-        print(list(self.dataDict.values())[0].values())
-        print(self.dataDict.values())
-        print("\n")
-        print(len(list(dict.keys(self.dataDict))))
-        print(len(list(list(self.dataDict.values())[0].values())))
-        print(len(list(list(self.dataDict.values())[1].values())))
         self.plot.pie(list(self.dataDict.values()), labels=list(dict.keys(self.dataDict)), autopct='%1.1f%%')
 
 class BarHPlot(PiePlot):
@@ -255,7 +248,7 @@ class FreqPlot(DataPresentation):
         self.freq = None
         super().__init__(stats, plot)
 
-    def analyseFreq(self, layer, yField):
+    def analyzeFreq(self, layer, yField):
         data = getattr(self.stats[layer], yField)
 
         self.fft = np.fft.fft(data)
@@ -265,12 +258,12 @@ class FreqPlot(DataPresentation):
         self.plot.plot(self.freq, self.fft.real, self.freq, self.fft.imag)
 
 class DomainExport(DataPresentation):
-    def __init__(self, stats, ipMapping, options):
+    def __init__(self, stats, ipMapping, options, geoDbCity, geoDbCountry):
         self.fields = []
         self.fileName = ""
         self.layers = []
         self.dataRows = []
-        self.ipResolver = IP.IPResolver(ipMapping)
+        self.ipResolver = IP.IPResolver(ipMapping, geoDbCity, geoDbCountry)
         self.domains = {'packetSize': {}, 'packetNum': {}}
         self.options = options
         super().__init__(stats, None)
@@ -339,7 +332,6 @@ class DomainExport(DataPresentation):
                     for direction in [Constants.Direction.SND, Constants.Direction.RCV]:
                         key = "{}-{}".format(layer, direction)
                         try: 
-                            print(self.domains)
                             row.append(str(self.getVal(self.domains[valueType][key], ip)))
                         except KeyError:
                             row.append("0")
@@ -356,7 +348,7 @@ class DomainExport(DataPresentation):
 
     def exportDataRows(self):
         if not os.path.isfile(self.options.outputFile):
-            saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organisation\n"
+            saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organization\n"
         else:
             saveStr = ""
    

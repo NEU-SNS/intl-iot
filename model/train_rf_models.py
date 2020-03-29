@@ -13,27 +13,30 @@ root_feature = ''
 root_model = ''
 output_file = root_model + '/output/train-models.txt'
 
+RED = "\033[31;1m"
+END = "\033[0m"
+
 def usage():
-    print("Usage: python %s in_features_dir out_model_dir\n" % os.path.basename(__file__))
+    print("Usage: python %s in_features_dir out_model_dir\n" % sys.argv[0])
     print("Trains analyzed pcap files and produces a model that can predict device activities.\n")
-    print("Example: %s features/us/ tagged-models/us/\n" % os.path.basename(__file__))
+    print("Example: python %s features/us/ tagged-models/us/\n" % sys.argv[0])
     print("Arguments:")
-    print("  in_features_dir: Path to a directory containing CSV files of statistically-analyzed pcap files")
-    print("  out_model_dir: Path to the directory to put the generated model")
+    print("  in_features_dir: Path to a directory containing CSV files of statistically-analyzed")
+    print("                   pcap files")
+    print("  out_model_dir: Path to the directory to put the generated models")
 
 def main():
-    test()
+    #test()
     global root_feature, root_model, output_file
 
-    print("\nTraining data and creating model...")
-    print("Running train_rf_models.py...")
+    print("Running %s..." % sys.argv[0])
 
     if len(sys.argv) != 3:
-        print("\033[31mError: 2 Arguments required. %d arguments found.\033[39m" % (len(sys.argv) - 1))
+        print("%sError: 2 arguments required. %d arguments found.%s" % (RED, (len(sys.argv) - 1), END))
         usage()
         return 0
     if not os.path.isdir(sys.argv[1]):
-        print("\033[31mError: Input directory %s does not exist!\033[39m" % sys.argv[1])
+        print("%sError: Input directory %s does not exist!%s" % (RED, sys.argv[1], END))
         usage()
         return 0
 
