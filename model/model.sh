@@ -1,14 +1,14 @@
 #!/bin/bash
 
 usage() {
-	echo -e "Usage: $0 exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path\n"
+    echo -e "Usage: $0 exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path\n"
     echo "Performs the content analysis pipeline. Converts raw network data into human-readable"
     echo "but still raw data. Performs statistical analysis on raw data to create a model,"
     echo "which can be used to predict the amount of device activity that can be inferred"
     echo -e "based on the network data of that device.\n"
     echo -e "Example: $0 list_exp.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera yi_camera_sample.pcap sample.csv\n"
     echo "Arugments:"
-	echo "  exp_list: Text file containing filepaths to pcap files to analyze"
+    echo "  exp_list: Text file containing filepaths to pcap files to analyze"
     echo "  intermediate_dir: Path to the directory to place the decoded pcap files"
     echo "  features_dir: Path to the directory to place the analyzed files"
     echo "  model_dir: Path to the directory to place the generated models"
@@ -16,7 +16,7 @@ usage() {
     echo "               be used to predict device activity"
     echo "  pcap_path: Path to the pcap file with unknown device activity"
     echo "  result_path: Path to a CSV file to write the results"
-	exit 0
+    exit 0
 }
 
 check_args_files() {

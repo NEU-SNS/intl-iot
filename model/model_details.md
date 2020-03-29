@@ -11,7 +11,7 @@ Example: `./model.sh exp_list.txt tagged-intermediate/us/ features/us/ tagged-mo
 This is the main script of the content analysis pipeline. The scripts listed below are parts of this pipeline. The main goal of this pipeline is to use machine learning to predict the device activity given the network traffic of that device. First, the pipeline needs to create a model using machine learning. The raw network traffic (provided in several pcap files with known device activity) is decoded into human-readable raw data. This raw data is then statistically analyzed and sent into an algorithm for training. Once trained, a model will be generated for each device. A pcap file with unknown device activity can be put through the same process of decoding it into human-readable data and statistically analyzing it. The analyzed data can then be used to predict the device activity based on the network traffic.
 
 Input:
-- `exp_list` - the text file that contains paths to input pcap files to generate the models. To see the format of this text file, please see the [exp_list.txt](exp_listtxt) section below).
+- `exp_list` - the text file that contains paths to input pcap files to generate the models. To see the format of this text file, please see the [exp_list.txt](#exp_listtxt) section below).
 - `intermediate_dir` - the path to the directory where the script will create and put decoded pcap files.
 - `features_dir` - the path to the directory where the script will create and put analyzed files.
 - `model_dir` - the path to the directory where the script will create and put generated models.
