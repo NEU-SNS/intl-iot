@@ -386,4 +386,5 @@ if __name__ == "__main__":
 
         Utils.sysUsage("Plots generated")
 
+    print("\nDestintaion analysis finished.")
     sys.exit()
