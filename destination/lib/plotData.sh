@@ -12,6 +12,6 @@ for f in $(find $expDir -name "*.pcap" | grep -v companion | grep "2019-05-08_")
 	#mac=$(grep " $device\$" aux/devices_${country}.txt | gawk '{print $1}')
   deviceList="aux/devices_${country}.txt"
 
-	echo python analyze.py -i $f -s aux/tshark_all.hosts -d $device -c $deviceList -e $experiment -b $lab -n $network -o $output
-	python analyze.py -i $f -s aux/tshark_all.hosts -d $device -c $deviceList -e $experiment -b $lab -n $network -o $output
+	echo python ../analyze.py -i $f -s ../aux/tshark_all.hosts -d $device -c $deviceList -e $experiment -b $lab -n $network -o $output
+	python ../analyze.py -i $f -s ../aux/tshark_all.hosts -d $device -c $deviceList -e $experiment -b $lab -n $network -o $output
 done;

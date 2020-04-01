@@ -8,7 +8,7 @@ Python 3.6 is required to run this code. Please follow the steps under General S
 Install the dependencies: `pip install -r requirements.txt`
 
 ## Information about the Model
-For an explanation about the machine learning models: [model_info.md](model_info.md)
+For an explanation about the machine learning models: [model_details.md](model_details.md)
 
 Definition of the device activity: tag name 
 [gdoc exp](https://docs.google.com/document/d/1_s6brtocKG0zpdTVNWOxZZdJ1WSkJKKw9gbZh_32WJU/edit)
@@ -43,4 +43,4 @@ The CSV file has six headings. Their meanings are listed below:
 - `state` - the predicted state that the device was in when the pcap file was created.
 - `device` - the device name that the data in the pcap file was recorded on.
 
-For more information about the files and directories in this section, see [model_details.md](model_details.md).
+For more information about the files and directories in this section, see [model_details.md](model_details.md#scripts).
