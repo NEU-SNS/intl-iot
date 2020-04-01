@@ -2,8 +2,6 @@
 
 Destination Analysis determines the organizations that traffic travels to and the amount of traffic going to and from those organizations.
 
-`fetch_passport.py` is used to map IP addresses to a country using Passport web service.
-
 ## Setup
 Before starting, go to https://dev.maxmind.com/geoip/geoip2/geolite2/ to create a free account to download the GeoLite2 databases. In this directory, create a new directory called `geoipdb/` and move `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` into this new directory.
 

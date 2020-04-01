@@ -63,6 +63,6 @@ pip install ipwhois
 pip install psutil
 ```
 
-For more information about the pipelines and the contents of the code, see the READMEs for [destination analysis](destination/README.md), [encryption analysis](encryption/README.md), and [content analysis](model/README.md). Content analysis also has a page describing the contents of that directory in depth: [model/model_details.md](model/model_details.md).
+For more information about the pipelines and the contents of the code, see the READMEs for [destination analysis](destination/README.md), [encryption analysis](encryption/README.md), and [content analysis](model/README.md). Content analysis also has a page describing the machine learning models and contents of that directory in depth: [model/model_details.md](model/model_details.md).
 
 For step-by-step instructions to get started analyzing data, see [Getting_Started.md](Getting_Started.md).
