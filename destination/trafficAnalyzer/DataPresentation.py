@@ -22,16 +22,16 @@ class PlotManager(object):
         for plot in self.graphs:
             plt.subplot(len(self.graphs), 1, self.subPlotCounter)
             if plot.plot == "StackPlot":
-                plt.xlabel("Packet TS")
-                plt.ylabel("Packet Size")
+                plt.xlabel("Packet TS (sec)")
+                plt.ylabel("Total Packet Size (bytes)")
                 self.generateStackPlot(plot)
             elif plot.plot in ["LinePlot", "ScatterPlot", "BarPlot"]:
-                plt.xlabel("Packet TS")
-                plt.ylabel("Packet Size")
+                plt.xlabel("Packet TS (sec)")
+                plt.ylabel("Packet Size (bytes)")
                 self.generateLinePlot(plot, plot.plot)
             elif plot.plot in ["PiePlot", "BarHPlot"]:
                 if self.options.ipAttr == None or self.options.ipAttr == "addrPacketSize":
-                    plt.xlabel("Packet Size")
+                    plt.xlabel("Packet Size (bytes)")
                 else:
                     plt.xlabel("Number Packets")
                 plt.ylabel("IP Address")
