@@ -85,7 +85,7 @@ from trafficAnalyzer import *
 
 
 usage_stm = """
-Usage: {prog_name} -i INPUTFILE {{-m MACADDR | -d DEVICE}} [Options] [-g PLOT -p PROTOCOL [Graph Options]] ...
+Usage: {prog_name} -i INPUTFILE {{-m MACADDR | -d DEVICE}} [OPTION]... [-g PLOT -p PROTOCOL [GRAPH_OPTIONS]...]...
 
 Performs destination analysis on a pcap file. Produces a CSV file detailing the
 organizations that traffic in the PCAP files has been to and the number of
