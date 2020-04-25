@@ -11,7 +11,9 @@ columns_intermediate = ['frame_no','ts', 'ts_delta','protocols', 'frame_len', 'e
 
 columns_state_features = [ "meanBytes", "minBytes", "maxBytes", "medAbsDev", "skewLength", "kurtosisLength",
                            "q10", "q20", "q30", "q40", "q50", "q60", "q70", "q80", "q90", "spanOfGroup",
-                           "meanTBP", "varTBP", "medianTBP", "kurtosisTBP", "skewTBP", "device", "state"]
+                           "meanTBP", "varTBP", "medianTBP", "kurtosisTBP", "skewTBP", "network_to", "network_from",
+                           "network_both", "network_to_external", "network_local", "anonymous_source_destination", "device", "state"]
+
 
 # import warnings
 
@@ -23,42 +25,45 @@ OUTPUT: features for RFT models, with device and state labels
 root_exp = ''
 root_feature = ''
 
-random_ratio = 0.8
-num_per_exp = 10
+random_ratio=0.8
+num_per_exp=10
 
 RED = "\033[31;1m"
 END = "\033[0m"
 
+usage_stm = """
+Usage: python {prog_name} in_imd_dir out_features_dir
+
+Performs statistical analysis on decoded pcap files.
+
+Example: python {prog_name} tagged-intermediate/us/ features/us/
+
+Arguments:
+  in_imd_dir:       path to a directory containing text files of decoded pcap data
+  out_features_dir: path to the directory to write the analyzed CSV files;
+                      directory will be generated if it does not already exist
+
+For more information, see model_details.md.""".format(prog_name=sys.argv[0])
 def usage():
-    print("Usage: python %s in_intermediate_dir out_features_dir\n" % sys.argv[0])
-    print("Performs statistical analysis on decoded pcap files.\n")
-    print("Example: python %s tagged-intermediate/us/ features/us/\n" % sys.argv[0])
-    print("Arguments:")
-    print("  in_intermediate_dir: Path to a directory containing text files of human-readable")
-    print("                       raw pcap data")
-    print("  out_features_dir: Path to the directory to write the analyzed CSV files")
+    print(usage_stm, file=sys.stderr)
+    exit(1)
 
 def main():
     global root_exp, root_feature
-    
-    print("Running %s..." % sys.argv[0])
+    path = sys.argv[0]
+    print("Running %s..." % path)
 
     if len(sys.argv) != 3:
-        print("%sError: 2 arguments required. %d arguments found.%s" % (RED, (len(sys.argv) - 1), END))
+        print("%s%s: Error: 2 arguments required. %d arguments found.%s" % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
         usage()
-        return 0
     if not os.path.isdir(sys.argv[1]):
-        print("%sError: Input directory %s does not exist!%s" % (RED, sys.argv[1], END))
+        eprint("%s%s: Error: Input directory %s does not exist!%s" % (RED, path, sys.argv[1], END), file=sys.stderr)
         usage()
-        return 0
 
     root_exp = sys.argv[1]
     root_feature = sys.argv[2]
     print("Input files located in: %s" % root_exp)
     print("Output files placed in: %s" % root_feature)
-    if len(sys.argv) == 3:
-        root_exp = sys.argv[1]
-        root_feature = sys.argv[2]
     prepare_features()
 
 def prepare_features():
@@ -66,10 +71,10 @@ def prepare_features():
     group_size = 50
     dict_intermediates = dict()
     dircache = root_feature + '/caches'
-    if not os.path.exists(dircache): 
+    if not os.path.exists(dircache):
         os.system('mkdir -pv %s' % dircache)
     #Parse input file names
-    # root_exp/dir_device/dir_exp/intermediate_file
+    #root_exp/dir_device/dir_exp/intermeidate_file
     for dir_device in os.listdir(root_exp):
         training_file = root_feature + '/' + dir_device + '.csv' #Output file
         #Check if output file exists
@@ -77,10 +82,12 @@ def prepare_features():
             print('Features for %s prepared already in %s' % (dir_device, training_file))
             continue
         full_dir_device = root_exp + '/' + dir_device
-        if os.path.isdir(full_dir_device) == False: continue
+        if os.path.isdir(full_dir_device) == False:
+            continue
         for dir_exp in os.listdir(full_dir_device):
             full_dir_exp = full_dir_device + '/' + dir_exp
-            if os.path.isdir(full_dir_exp) == False: continue
+            if os.path.isdir(full_dir_exp) == False:
+                continue
             for intermediate_file in os.listdir(full_dir_exp):
                 full_intermediate_file = full_dir_exp + '/' + intermediate_file
                 if intermediate_file[-4:] != ".txt":
@@ -98,6 +105,7 @@ def prepare_features():
                 if device not in dict_intermediates:
                     dict_intermediates[device] = []
                 dict_intermediates[device].append(paras)
+
     devices = "Feature files to be generated from following devices: "
     if len(dict_intermediates) == 0:
         devices = devices + "None"
@@ -109,7 +117,7 @@ def prepare_features():
 
     for device in dict_intermediates:
         training_file = root_feature + '/' + device + '.csv'
-        list_data = []
+        list_data= []
         list_paras = dict_intermediates[device]
         for paras in list_paras:
             full_intermediate_file = paras[0]
@@ -135,10 +143,10 @@ def load_features_per_exp(intermediate_file, feature_file, group_size, deviceNam
 
     #Attempt to extract data from input files if not in previously-generated cache files
     feature_data = extract_features(intermediate_file, feature_file, group_size, deviceName, state)
-    if feature_data is None or len(feature_data) == 0: #can't extract from input files
-        print('No data or feature from %s' % intermediate_file)
+    if feature_data is None or len(feature_data) == 0: #Can't extract from input files
+        print('No data or feature')
         return
-    else: #cache was generated, save to file
+    else: #Cache was generated; save to file
         print('    Saved to %s' % feature_file)
         feature_data.to_csv(feature_file, index=False)
     return feature_data
@@ -149,9 +157,9 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
         print('%s not exist' % intermediate_file)
         return
     col_names = columns_intermediate
-    c = columns_state_features
+    c= columns_state_features
     pd_obj_all = pd.read_csv(intermediate_file, names=col_names, sep='\t')
-    pd_obj = pd_obj_all.loc[:, ['ts', 'ts_delta', 'frame_len']]
+    pd_obj = pd_obj_all.loc[:, ['ts', 'ts_delta', 'frame_len','ip_src','ip_dst']]
     num_total = len(pd_obj_all)
     if pd_obj is None or num_total < 10:
         return
@@ -160,7 +168,7 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
     num_pkts = int(num_total * random_ratio)
     for di in range(0, num_per_exp):
         random_indices = list(np.random.choice(num_total, num_pkts))
-        random_indices = sorted(random_indices)
+        random_indices=sorted(random_indices)
         pd_obj = pd_obj_all.loc[random_indices, :]
         d = compute_tbp_features(pd_obj, deviceName, state)
         feature_data = feature_data.append(pd.DataFrame(data=[d], columns=c))
@@ -182,22 +190,39 @@ def compute_tbp_features(pd_obj, deviceName, state):
     meanTBP = pd_obj.ts_delta.mean()
     varTBP = pd_obj.ts_delta.var()
     medTBP = pd_obj.ts_delta.median()
+    network_to = 0 # Network going to 192.168.10.204, or home.
+    network_from = 0 # Network going from 192.168.10.204, or home.
+    network_both = 0 # Network going to/from 192.168.10.204, or home both present in source.
+    network_local = 0
+    network_to_external = 0 # Network not going to just 192.168.10.248.
+    anonymous_source_destination = 0
+
+
+    for i,j in zip(pd_obj.ip_src,pd_obj.ip_dst):
+        if i == "192.168.10.204":
+            network_from+=1
+        elif j == "192.168.10.204":
+            network_to+=1
+        elif i == "192.168.10.248,192.168.10.204":
+            network_both+=1
+        elif j == "192.168.10.204,129.10.227.248":
+            network_local+=1
+        elif (j!="192.168.10.204" and i!="192.168.10.204"):
+            network_to_external+=1
+        else:
+            anonymous_source_destination+=1
+
+
 
     d = [meanBytes, minBytes, maxBytes,
          medAbsDev, skewL, kurtL, percentiles[0],
          percentiles[1], percentiles[2], percentiles[3],
          percentiles[4], percentiles[5], percentiles[6],
          percentiles[7], percentiles[8], spanG, meanTBP, varTBP,
-         medTBP, kurtT, skewT, deviceName, state]
+         medTBP, kurtT, skewT,network_to,network_from,
+         network_both,network_to_external,network_local,anonymous_source_destination,
+         deviceName, state]
     return d
-#
-# def test():
-#     pc = os.uname()[1]
-#     print(pc)
-#     if pc == 'JMac.local':
-#         feature_data=extract_features('../examples/example-unctrl.txt', '../examples/example-unctrl-tbp-features.csv', 10, 'somedevice', 'somestate')
-#         print(feature_data)
-#         exit(0)
 
 if __name__ == '__main__':
     main()
