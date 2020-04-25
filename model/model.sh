@@ -93,7 +93,7 @@ read_args() {
 
     if [[ $model_gen == "" ]]
     then
-        model_gen="dknrs"
+        model_gen="knr"
     fi
 }
 
@@ -207,7 +207,7 @@ run_pipeline() {
     check_ret_code $? $train_models
 
     echo -e "\nStep 4: Predicting device activity..."
-    python -W ignore $predict $device_name $model_name $pcap_path $result_path $models_dir
+    python -W ignore $predict $pcap_path $models_dir $device_name $model_name $result_path
     check_ret_code $? $predict
 }
 
@@ -223,8 +223,8 @@ end="\e[0m"
 path=$0
 model_dir=$(dirname $path)
 raw2int="${model_dir}/raw2intermediate.sh"
-ext_features="${model_dir}/extract_tbp_features.py"
-train_models="${model_dir}/eval_models_all.py"
+ext_features="${model_dir}/extract_features.py"
+train_models="${model_dir}/eval_models.py"
 predict="${model_dir}/predict.py"
 
 exp_list="${model_dir}/exp_list.txt"
@@ -239,10 +239,10 @@ result_path="${model_dir}/sample.csv"
 
 read_args $@
 check_args_files
-#run_pipeline
+run_pipeline
 
 finish=`date '+%A %d %B %Y %T %Z %s'`
-echo "End time: $(echo $finish | cut -d ' ' -f -6)"
+echo -e "\nEnd time: $(echo $finish | cut -d ' ' -f -6)"
 finish_time=$(echo $finish | cut -d ' ' -f 7-)
 
 #Calculate elapsed time
