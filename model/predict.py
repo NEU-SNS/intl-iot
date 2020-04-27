@@ -31,7 +31,7 @@ Usage: python {prog_name} pcap_path model_dir device_name model_name result_path
 
 Uses a model to predict the device activity given network traffic of that device.
 
-Example: python {prog_name} yi_camera_sample.pcap tagged-models/us/ yi-camera knn sample.csv
+Example: python {prog_name} yi_camera_sample.pcap tagged-models/us/ yi-camera rf sample.csv
 
 Arguments:
   pcap_path:   path to the pcap file with unknown device activity
