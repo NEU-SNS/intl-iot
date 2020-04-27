@@ -199,11 +199,11 @@ run_pipeline() {
     check_ret_code $? $raw2int
 
     echo -e "\nStep 2: Performing statistical analysis..."
-    python $ext_features $intermediate_dir $features_dir
+    python -W ignore $ext_features $intermediate_dir $features_dir
     check_ret_code $? $ext_features
 
     echo -e "\nStep 3: Training data and creating model..."
-    python $train_models -f $features_dir -m $models_dir -$model_gen
+    python -W ignore $train_models -f $features_dir -m $models_dir -$model_gen
     check_ret_code $? $train_models
 
     echo -e "\nStep 4: Predicting device activity..."

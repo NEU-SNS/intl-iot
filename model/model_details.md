@@ -141,7 +141,7 @@ Input:
 - `pcap_path` - the path to the pcap file with unknown device activity.
 - `model_dir` - the path to the directory containing the directories of the models.
 - `device_name` - the name of the device that generated the data in pcap_path. This argument should match the name of a `device_name` directory (see the [exp_list.txt](#exp_listtxt) section below).
-- `model_name` - the name of the model to be used to predict the device activity in pcap_path. Choose from kmeans, knn, or rf.
+- `model_name` - the name of the model to be used to predict the device activity in `pcap_path`. Choose from kmeans, knn, or rf.
 - `result_path` - path to a CSV file to write results.
 
 Output:
