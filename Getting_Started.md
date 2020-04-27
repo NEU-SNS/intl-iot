@@ -90,22 +90,27 @@ See the `exp_list.txt` section in [model/model_details.md](model/model_details.m
 4) Create a text file containing the paths to each input pcap file, with each path on a new line. You may name the text file whatever you would like.
 
 ### Run Pipeline
-Usage: `./model.sh exp_list intermediate_dir features_dir model_dir device_name pcap_path result_path`
+Usage: `./model.sh [OPTION]...`
 
-For input, this pipeline requires several items:
-- `exp_list` - the text file that contains paths to input pcap files that will be used to generate the models. If you are using your own dataset, this is the file you created in Step 4.
-- `intermediate_dir` - the path to the directory where the script will create and put decoded pcap files.
-- `features_dir` - the path to the directory where the script will create and put analyzed files.
-- `model_dir` - the path to the directory where the script will create and put generated models.
-- `device_name` - the name of the device that generated the data in the pcap file of unknown device activity. This argument should match the name of a `device_name` directory (see Step 3).
-- `pcap_path` - the path to a pcap file of unknown device activity.
-- `result_path` - the path to a CSV file to output the results.
+For input, this pipeline has several options:
+- `-i EXP_LIST_PATH` - the path to text file containing filepaths to the pcap files to be used to generate machine learning models. To see the format of this text file, please see the [exp_list.txt](#exp_listtxt) section below). Default is `exp_list.txt`.
+- `-t IMD_DIR` - the path to the directory where the script will create and put decoded pcap files. Default is `tagged-intermediate/us/`.
+- `-f FEATURES_DIR` - the path to the directory where the script will create and put analyzed files. Default is `features/us/`.
+- `-m MODELS_DIR` - the path to the directory where the script will create and put generated models. Default is `tagged-models/us/`.
+- `-k` - generate a model using the kmeans algorithm.
+- `-n` - generate a mdoel using the knn algorithm.
+- `-r` - generate a model using the rf algorithm.
+- `-p PCAP_PATH` - the path to the pcap file with unknown device activity. Default is `yi_camera_sample.pcap`.
+- `-d DEVICE_NAME` - the name of the device that generated the data in `PCAP_PATH`. This argument should match the name of a `device_name` directory (see the [exp_list.txt](#exp_listtxt) section below). Default is `yi-camera`.
+- `-l MODEL_NAME` - the name of the model to be used to the predict the device activity in `PCAP_PATH`. Choose from kmeans, knn, or rf. Default is `rf`.
+- `-o RESULT_PATH` - the path to a CSV file to write the results of predicting the device activity of `PCAP_PATH`. Default is `sample.csv`.
+- `-h` - display the help message.
 
-Note: If you are using your own datasets, you do not need to create any of the directories nor the output CSV file listed above; the script will generate them. If you are using the provided dataset, the directories are already included; use the example below.
+Note: You do not need to create any of the directories nor the output CSV file; the script will generate them. If you are using the provided dataset, you can run the script just by using `./model.sh`, as all arguments for the provided dataset are the default arguments.
 
 For output, a CSV file is produced, which contains the device activity prediction. For more information about the contents of the CSV file, see the output section in [model/README.md](model/README.md#output).
 
-Example: `./model.sh exp_list.txt tagged-intermediate/us/ features/us/ tagged-models/us/ yi-camera yi_camera_sample.pcap sample.csv`
-   - Output: TShark decodes the pcap files listed in `exp_list.txt`, which is written to the `tagged-intermediate/us/` directory. Features are then extracted to the `features/us/` directory. Using the features, a machine learning model is created in the `tagged-models/us/` directory. The pcap file `yi_camera_sample.pcap` is then sent into the model and results are produced to `sample.csv`.
+Example: `./model.sh -i exp_list.txt -rn -d yi-camera -l knn -p yi_camera_sample.pcap -o sample.csv`
+   - Output: TShark decodes the pcap files listed in `exp_list.txt`, which is written to the `tagged-intermediate/us/` directory. Features are then extracted to the `features/us/` directory. Using the features, two machine learning models are created in the `tagged-models/us/` directory using the `rf` and `knn` algorithms. The pcap file `yi_camera_sample.pcap` is then sent into the `knn` model and results are produced to `sample.csv`.
 
 For more information about the files and directories in this section, see [model/model_details.md](model/model_details.md). For step by step instructions on how this pipeline works, see [model/model_sample.ipynb](model/model_sample.ipynb).

@@ -15,13 +15,13 @@ algorithms available to generate the models.
 Example: $path -i exp_list.txt -rn -d yi-camera -l knn -p yi_camera_sample.pcap -o sample.csv
 
 Options:
-  -i EXP_LIST_PATH path to text file containing filepaths to the pcap files used
+  -i EXP_LIST_PATH path to text file containing filepaths to the pcap files to be used
                      to generate machine learning models (Default = exp_list.txt)
   -t IMD_DIR       path to the directory to place the decoded pcap files
                      (Default = tagged-intermediate/us/)
   -f FEATURES_DIR  path to the directory to place the statistically-analyzed files
                      (Default = features/us/)
-  -m MODEL_DIR     path to the directory to place the generated models
+  -m MODELS_DIR     path to the directory to place the generated models
                      (Default = tagged-models/us/)
   -k               generate a model using the kmeans algorithm
   -n               generate a model using the knn algorithm
@@ -30,7 +30,7 @@ Options:
                      (Default = yi_camera_sample.pcap)
   -d DEVICE_NAME   name of the device that generated the data in PCAP_PATH
                      (Default = yi-camera)
-  -l MODEL_NAME    name of the model to be used to the device activity in
+  -l MODEL_NAME    name of the model to be used to predict the device activity in
                      PCAP_PATH; choose from kmeans, knn, or rf (Default = rf)
   -o RESULT_PATH   path to a CSV file to write the results of predicting the
                      device activity of PCAP_PATH (Default = sample.csv)
@@ -38,7 +38,7 @@ Options:
 
 Notes: 
  - All directories and RESULT_PATH will be generated if they currently do not exist.
- - If no model is specified to be generated, all five models will be generated.
+ - If no model is specified to be generated, all three models will be generated.
 
 For more information, see model_details.md."
 

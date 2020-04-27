@@ -59,7 +59,7 @@ RED = "\033[31;1m"
 END = "\033[0m"
 
 usage_stm = """
-Usage: python {prog_name} -f IN_FEATURES_DIR -m OUT_MODEL_DIR [-knr]
+Usage: python {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-knr]
 
 Trains anaylzed pcap files and produces one or more models using different algorithms
 that can predict device activity.
@@ -68,12 +68,12 @@ Example: python {prog_name} -f features/us/ -m tagged-models/us/ -kn
 
 Arguments:
   -f IN_FEATURES_DIR path to a directory containing CSV files of statistically-analyzed
-                       pcap files; this option is required
-  -m OUT_MODEL_DIR   path to the directory to put the generated models; this directory
-                       will be created if it does not exist; this option is required
-  -k                 produce a model using the kmeans algorithm.
-  -n                 produce a model using the knn algorithm.
-  -r                 produce a model using the rf algorithm.
+                       pcap files; option required
+  -m OUT_MODELS_DIR  path to the directory to put the generated models; this directory
+                       will be created if it does not exist; option required
+  -k                 produce a model using the kmeans algorithm
+  -n                 produce a model using the knn algorithm
+  -r                 produce a model using the rf algorithm
 
 Note: If no model is chosen, all of the models will be produced.""".format(prog_name=sys.argv[0])
 
