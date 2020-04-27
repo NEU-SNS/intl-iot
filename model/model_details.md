@@ -141,10 +141,11 @@ Input:
 - `pcap_path` - the path to the pcap file with unknown device activity.
 - `model_dir` - the path to the directory containing the directories of the models.
 - `device_name` - the name of the device that generated the data in pcap_path. This argument should match the name of a `device_name` directory (see the [exp_list.txt](#exp_listtxt) section below).
+- `model_name` - the name of the model to be used to predict the device activity in pcap_path. Choose from kmeans, knn, or rf.
 - `result_path` - path to a CSV file to write results.
 
 Output:
-The script decodes the input pcap file and stores the decoded data in a `user-intermediates/` directory. If a file containing the decoded data already exists, the file will not be regenerated. The script then outputs a CSV file containing the predictions made by the model and the decoded data. If the output file already exists, the script will overwrite the file.
+The script decodes the input pcap file and stores the decoded data in a `user-intermediates/` directory. If a file containing the decoded data already exists, the file will not be regenerated. The script then outputs a CSV file containing the predictions made by the selected model and the decoded data. If the output file already exists, the script will overwrite the file.
 
 ## Non-scripts
 
