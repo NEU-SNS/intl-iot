@@ -50,8 +50,7 @@ num_pools = 12
 
 # default_models = ['rf']
 # default_models = ['rf', 'knn']
-# default_models = ['dbscan', 'kmeans', 'knn', 'rf', 'spectral']
-default_models = ['kmeans', 'knn', 'rf']
+default_models = ['dbscan', 'kmeans', 'knn', 'rf', 'spectral']
 # default_models = ['knn']
 model_list = []
 
@@ -59,7 +58,7 @@ RED = "\033[31;1m"
 END = "\033[0m"
 
 usage_stm = """
-Usage: python {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-knr]
+Usage: python {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-dknrs]
 
 Trains anaylzed pcap files and produces one or more models using different algorithms
 that can predict device activity.
@@ -71,9 +70,11 @@ Arguments:
                        pcap files; option required
   -m OUT_MODELS_DIR  path to the directory to put the generated models; this directory
                        will be created if it does not exist; option required
+  -d                 produce a model using the dbscan algorithm
   -k                 produce a model using the kmeans algorithm
   -n                 produce a model using the knn algorithm
   -r                 produce a model using the rf algorithm
+  -s                 produce a model using the spectral algorithm
 
 Note: If no model is chosen, all of the models will be produced.""".format(prog_name=sys.argv[0])
 

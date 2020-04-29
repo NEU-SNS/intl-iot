@@ -33,7 +33,7 @@ extract_pcap() {
         rm -v ${txt_file}
 	echo
     else
-        head -3 ${txt_file}
+        head -2 ${txt_file}
         echo "Line count: $(wc -l ${txt_file})"
         echo
     fi
@@ -94,7 +94,7 @@ do
     #Nothing happens if output file exists
     if ! [ -e $fileIntermediate ]
     then
-        echo "Decoding $line into $fileIntermediate"
+        echo "Decoding $line"
         extract_pcap $line $fileIntermediate
     else
         echo "$fileIntermediate exists."

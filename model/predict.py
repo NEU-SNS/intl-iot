@@ -42,6 +42,8 @@ Arguments:
   result_path: path to a CSV file to write results; will be generated if it does not
                  already exist
 
+Note: The dbscan and spectral algorithms cannot be used for prediction.
+
 For more information, see model_details.md.""".format(prog_name=sys.argv[0])
 
 def usage():
