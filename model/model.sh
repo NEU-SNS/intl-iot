@@ -12,7 +12,7 @@ text files. Statistical analysis is performed on this data, which can then
 be used to generate the machine learning models. There currently are three
 algorithms available to generate the models.
 
-Example: $path -i exp_list.txt -rn -d yi-camera -l knn -p yi_camera_sample.pcap -o sample.csv
+Example: $path -i exp_list.txt -rn -v yi-camera -l knn -p yi_camera_sample.pcap -o sample.csv
 
 Options:
   -i EXP_LIST_PATH path to text file containing filepaths to the pcap files to be used
@@ -23,15 +23,18 @@ Options:
                      (Default = features/us/)
   -m MODELS_DIR     path to the directory to place the generated models
                      (Default = tagged-models/us/)
+  -d               generate a model using the dbscan algorithm
   -k               generate a model using the kmeans algorithm
   -n               generate a model using the knn algorithm
   -r               generate a model using the rf algorithm
+  -s               generate a model using the spectral algorithm
   -p PCAP_PATH     path to the pcap file with unknown device activity
                      (Default = yi_camera_sample.pcap)
-  -d DEVICE_NAME   name of the device that generated the data in PCAP_PATH
+  -v DEVICE_NAME   name of the device that generated the data in PCAP_PATH
                      (Default = yi-camera)
   -l MODEL_NAME    name of the model to be used to predict the device activity in
-                     PCAP_PATH; choose from kmeans, knn, or rf (Default = rf)
+                     PCAP_PATH; choose from kmeans, knn, or rf; dbscan and spectral
+                     cannot be used for prediction (Default = rf)
   -o RESULT_PATH   path to a CSV file to write the results of predicting the
                      device activity of PCAP_PATH (Default = sample.csv)
   -h               display this help message
@@ -52,7 +55,7 @@ For more information, see model_details.md."
 }
 
 read_args() {
-    while getopts "i:t:f:m:knrp:d:l:o:h" opt
+    while getopts "i:t:f:m:dknrsp:v:l:o:h" opt
     do
         case $opt in
             i)
@@ -67,13 +70,13 @@ read_args() {
             m)
                 models_dir="$OPTARG"
                 ;;
-            k|n|r)
+            d|k|n|r|s)
                 model_gen="${model_gen}${opt}"
                 ;;
             p)
                 pcap_path="$OPTARG"
                 ;;
-            d)
+            v)
                 device_name="$OPTARG"
                 ;;
             l)
@@ -93,7 +96,7 @@ read_args() {
 
     if [[ $model_gen == "" ]]
     then
-        model_gen="knr"
+        model_gen="dknrs"
     fi
 }
 
@@ -107,7 +110,7 @@ check_args_files() {
     then
         errors=true
         echo -e "${red}${path}: Error: The script \"$raw2int\" cannot be found." >&2
-        echo -e "${red}       Please make sure it is in the same directory as \"${path}\".$end" >&2
+        echo -e "${red}  Please make sure it is in the same directory as \"${path}\".$end" >&2
     else
         if ! [ -r $raw2int ]
         then
@@ -122,14 +125,14 @@ check_args_files() {
     fi
     
     #Check that rest of the scripts exists and have proper permissions
-    files=($ext_features $train_models $predict)
+    files=($ext_features $train_models $predict $validate)
     for f in ${files[@]}
     do
         if ! [ -f $f ]
         then
             errors=true
             echo -e "${red}${path}: Error: The script \"$f\" cannot be found." >&2
-            echo -e "${red}       Please make sure it is in the same directory as \"${path}\".$end" >&2
+            echo -e "${red}  Please make sure it is in the same directory as \"${path}\".$end" >&2
         elif ! [ -r $f ]
         then
             errors=true
@@ -155,6 +158,7 @@ check_args_files() {
         *)
             errors=true
             echo -e "${red}${path}: Error: \"${model_name}\" is an invalid model name.$end" >&2
+            echo -e "${red}  Note: dbscan and spectral cannot be used for prediction.$end" >&2
             ;;
     esac
 
@@ -188,7 +192,7 @@ check_ret_code() {
     if [ $ret_code -ne 0 ]
     then
         echo -e "${red}${path}: Error: Something went wrong with \"$(basename $file)\". Exit status $ret_code.$end" >&2
-        echo -e "${red}       Please make sure you have properly set up your environment.$end" >&2
+        echo -e "${red}  Please make sure you have properly set up your environment.$end" >&2
         exit $ret_code
     fi
 }
@@ -211,12 +215,10 @@ run_pipeline() {
     check_ret_code $? $predict
 }
 
-echo "Performing content analysis pipeline..."
-echo "Running $0..."
+
+#### Begin Model Pipeline ###
 
 begin=`date '+%A %d %B %Y %T %Z %s'`
-echo "Start time: $(echo $begin | cut -d ' ' -f -6)"
-begin_time=$(echo $begin | cut -d ' ' -f 7-)
 
 red="\e[31;1m"
 end="\e[0m"
@@ -225,6 +227,7 @@ model_dir=$(dirname $path)
 raw2int="${model_dir}/raw2intermediate.sh"
 ext_features="${model_dir}/extract_features.py"
 train_models="${model_dir}/eval_models.py"
+validate="${model_dir}/validate.py"
 predict="${model_dir}/predict.py"
 
 exp_list="${model_dir}/exp_list.txt"
@@ -232,17 +235,56 @@ intermediate_dir="${model_dir}/tagged-intermediate/us"
 features_dir="${model_dir}/features/us"
 models_dir="${model_dir}/tagged-models/us"
 model_gen=""
+pcap_path="${model_dir}/yi_camera_sample.pcap"
 device_name="yi-camera"
 model_name="rf"
-pcap_path="${model_dir}/yi_camera_sample.pcap"
 result_path="${model_dir}/sample.csv"
 
 read_args $@
+
+echo "Performing content analysis pipeline..."
+echo "Running $0..."
+
+echo "Pipeline start time: $(echo $begin | cut -d ' ' -f -6)"
+begin_time=$(echo $begin | cut -d ' ' -f 7-)
+
+
 check_args_files
+
+echo "Experiment list (-i):  $exp_list"
+echo "Intermediate dir (-t): $intermediate_dir"
+echo "Features dir (-f):     $features_dir"
+echo "Models dir (-m):       $models_dir"
+echo -n "Model(s) to generate:  "
+if [[ $model_gen == *"d"* ]]
+then
+    echo -n "dbscan "
+fi
+if [[ $model_gen == *"k"* ]]
+then
+    echo -n "kmeans "
+fi
+if [[ $model_gen == *"n"* ]]
+then
+    echo -n "knn "
+fi 
+if [[ $model_gen == *"r"* ]]
+then
+    echo -n "rf "
+fi
+if [[ $model_gen == *"s"* ]]
+then
+    echo -n "spectral "
+fi
+echo -e "\nPcap path (-p):        $pcap_path"
+echo "Pcap path device (-v): $device_name"
+echo "Prediction model (-l): $model_name"
+echo "Result CSV (-o):       $result_path"
+
 run_pipeline
 
 finish=`date '+%A %d %B %Y %T %Z %s'`
-echo -e "\nEnd time: $(echo $finish | cut -d ' ' -f -6)"
+echo -e "\n\nPipeline end time: $(echo $finish | cut -d ' ' -f -6)"
 finish_time=$(echo $finish | cut -d ' ' -f 7-)
 
 #Calculate elapsed time
@@ -258,6 +300,6 @@ then
     sec=$(($sec-($min*60)))
 fi
 
-echo "Time elapsed: $hrs hours $min minutes $sec seconds"
+echo "Time to run pipeline: $hrs hours $min minutes $sec seconds"
 
 echo -e "\nContent analysis finished."

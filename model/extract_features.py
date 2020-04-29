@@ -144,10 +144,9 @@ def load_features_per_exp(intermediate_file, feature_file, group_size, deviceNam
     #Attempt to extract data from input files if not in previously-generated cache files
     feature_data = extract_features(intermediate_file, feature_file, group_size, deviceName, state)
     if feature_data is None or len(feature_data) == 0: #Can't extract from input files
-        print('No data or feature')
+        print('No data or features')
         return
     else: #Cache was generated; save to file
-        print('    Saved to %s' % feature_file)
         feature_data.to_csv(feature_file, index=False)
     return feature_data
 
@@ -163,7 +162,8 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
     num_total = len(pd_obj_all)
     if pd_obj is None or num_total < 10:
         return
-    print('Total packets: %s' % num_total)
+    print('Extracting from %s' % intermediate_file)
+    print('   %s packets %s' % (num_total, feature_file))
     feature_data = pd.DataFrame()
     num_pkts = int(num_total * random_ratio)
     for di in range(0, num_per_exp):
