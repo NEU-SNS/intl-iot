@@ -308,7 +308,7 @@ class DomainExport(DataPresentation):
         ips = self.getKeysFromDict(self.domains['packetSize'])
         rows = []
         for ip in ips:
-            if self.ipResolver.isIPAddr(ip): 
+            if self.ipResolver.isIPAddr(ip):
                 domainFull = self.ipResolver.getDataPoint(ip, "TSharkHost", False)
                 domain = self.ipResolver.extractDomain(domainFull)
                 country = self.ipResolver.getDataPoint(ip, "CountryMapping", True, False)

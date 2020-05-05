@@ -144,7 +144,7 @@ def load_features_per_exp(intermediate_file, feature_file, group_size, deviceNam
     #Attempt to extract data from input files if not in previously-generated cache files
     feature_data = extract_features(intermediate_file, feature_file, group_size, deviceName, state)
     if feature_data is None or len(feature_data) == 0: #Can't extract from input files
-        print('No data or features')
+        print('No data or features from %s' % intermediate_file)
         return
     else: #Cache was generated; save to file
         feature_data.to_csv(feature_file, index=False)
