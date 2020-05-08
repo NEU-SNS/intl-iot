@@ -1,4 +1,5 @@
 """
+
 Modified from https://docs.python.org/3.4/library/socketserver.html
 """
 import socketserver
@@ -19,7 +20,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         print("{} wrote:".format(self.client_address[0]))
         # print(self.data)
         # just send back the same data, but upper-cased
-        self.request.sendall('%d received' % len(self.data))
+        self.request.sendall('%d received'%len(self.data))
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
