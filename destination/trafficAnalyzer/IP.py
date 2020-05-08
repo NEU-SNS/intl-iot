@@ -262,17 +262,18 @@ class IPMapping(object):
         self.host = {}
         self.ip = {}
 
-    #tshark -z option seems to have a 64 character limit buffer
-    #If host is longer than 64 chars, then it will be truncated
-    #However, the full host name is in the details of running "tshark [pcap_file]"
-    #This method searches for the line containing the truncated host name and checks
+    #tshark -z option seems to return a CNAME but the A Record is wanted
+    #However, the A Record is in the details of running "tshark -r [pcap_file]"
+    #This method searches for the line containing the host name and checks
     #accuracy by making sure that the ip is also in that line
-    def getFullHost(self, details, host, ip):
+    def getARecord(self, details, host, ip):
         for line in details.splitlines(): #loop through lines in detailed tshark output
             if host in line and ip in line:
-                for word in line.split(): #loop through words in line
-                    if host in word:
-                        return word
+                words = line.split()
+                for idx, word in enumerate(words): #loop through words in line
+                    if word == "A":
+                        #print(ip, host, words[idx + 1], sep="\t")
+                        return words[idx + 1]
 
         return None
 
@@ -284,7 +285,7 @@ class IPMapping(object):
                 universal_newlines=True)
             hosts = str(p2.communicate()[0][0:-1]).split("\n")
 
-            #run "tshark -r [pcap_file]" - gets the details which contain untruncated hosts
+            #run "tshark -r [pcap_file]" - gets the details which contain A Record
             details = str(os.popen("tshark -r %s" % fileName).read())
         else:
             with open(fileName) as f:
@@ -295,10 +296,9 @@ class IPMapping(object):
         for hostLine in hosts:
             try:
                 ip, host = hostLine.split("\t")
-                #If host is 63 chars long, tshark might have truncated it
-                #Get the untruncated host name back
-                if len(host) == 63 and fileName.endswith(".pcap"):
-                    tmpHost = self.getFullHost(details, host, ip)
+                #Get the A Record host name
+                if fileName.endswith(".pcap"):
+                    tmpHost = self.getARecord(details, host, ip)
                     if tmpHost != None:
                         host = tmpHost
 
