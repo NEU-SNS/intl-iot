@@ -125,7 +125,7 @@ check_args_files() {
     fi
     
     #Check that rest of the scripts exists and have proper permissions
-    files=($ext_features $train_models $predict $validate)
+    files=($ext_features $train_models $predict)
     for f in ${files[@]}
     do
         if ! [ -f $f ]
@@ -227,7 +227,7 @@ model_dir=$(dirname $path)
 raw2int="${model_dir}/raw2intermediate.sh"
 ext_features="${model_dir}/extract_features.py"
 train_models="${model_dir}/eval_models.py"
-validate="${model_dir}/validate.py"
+#validate="${model_dir}/validate.py"
 predict="${model_dir}/predict.py"
 
 exp_list="${model_dir}/exp_list.txt"
