@@ -47,8 +47,6 @@ files = [consts, dataPres, dev, dnsTrack, init, ip, node, stat, util]
 RED = "\033[31;1m"
 END = "\033[0m"
 
-os.system("pwd")
-print(destDir)
 print("Running %s..." % sys.argv[0])
 
 
