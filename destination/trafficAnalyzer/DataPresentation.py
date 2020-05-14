@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import threading
 
 from . import Stats, IP, Constants
 
@@ -266,6 +267,7 @@ class DomainExport(DataPresentation):
         self.ipResolver = IP.IPResolver(ipMapping, geoDbCity, geoDbCountry)
         self.domains = {'packetSize': {}, 'packetNum': {}}
         self.options = options
+        self.lock = threading.Lock()
         super().__init__(stats, None)
 
     def loadIPFor(self, layer):
@@ -347,15 +349,20 @@ class DomainExport(DataPresentation):
             self.dataRows.append(row)
 
     def exportDataRows(self):
+        csv_data = "\n".join([",".join(r) for r in self.dataRows])+"\n"
+        saveStr = ""
+
+        self.lock.acquire()
+
         if not os.path.isfile(self.options.outputFile):
             saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organization\n"
-        else:
-            saveStr = ""
    
-        saveStr+= "\n".join([",".join(r) for r in self.dataRows])+"\n"
+        saveStr += csv_data
     
         with open(self.options.outputFile, 'a+') as f:
             f.write(saveStr)
+
+        self.lock.release()
 
         print("Analyzed data from \"%s\" successfully written to \"%s\"" % (self.options.inputFile, self.options.outputFile))
 
