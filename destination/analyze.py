@@ -51,8 +51,6 @@ print("Running %s..." % sys.argv[0])
 
 
 #Check that traffic analyzer package has all files and correct permissions
-print("Checking files...")
-
 errors = False
 if not os.path.isdir(trafficAnaDir):
     errors = True
@@ -84,11 +82,11 @@ from trafficAnalyzer import *
 
 
 usage_stm = """
-Usage: {prog_name} -i INPUTFILE {{-m MACADDR | -d DEVICE}} [OPTION]... [-g PLOT -p PROTOCOL [GRAPH_OPTIONS]...]...
+Usage: python {prog_name} -i INPUTFILE {{-m MACADDR | -d DEVICE}} [OPTION]... [-g PLOT -p PROTOCOL [GRAPH_OPTIONS]...]...
 
 Performs destination analysis on a pcap file. Produces a CSV file detailing the
 organizations that traffic in the PCAP files has been to and the number of
-packetsthat were sent and received from those organizations. The program also
+packets that were sent and received from those organizations. The program also
 can produce graphs of this data.
 
 Example: python {prog_name} -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv
@@ -197,7 +195,6 @@ if __name__ == "__main__":
 
 
     #Main options
-    print("Reading command line arguments...")
     parser = argparse.ArgumentParser(usage=usage_stm)
     parser.add_argument("-i", "--inputFile", dest="inputFile")
     parser.add_argument("-m", "--mac", dest="macAddr", default="")
@@ -261,7 +258,6 @@ if __name__ == "__main__":
 
 
     #Error checking command line args
-    print("Performing error checking on command line arguments...")
     done = False
     if options.inputFile == None:
         print("%sError: Pcap input file required.%s" % (RED, END))
@@ -299,7 +295,7 @@ if __name__ == "__main__":
         else:
             options.macAddr = options.macAddr.lower()
             if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", options.macAddr):
-                print("%sError: Invalid MAC address \"%s\". Valid format: dd:dd:dd:dd:dd:dd%s" % (RED, options.macAddr, END))
+                print("%sError: Invalid MAC address \"%s\". Valid format: xx:xx:xx:xx:xx:xx%s" % (RED, options.macAddr, END))
                 done = True
 
     if validDeviceList:
@@ -386,4 +382,3 @@ if __name__ == "__main__":
         Utils.sysUsage("Plots generated")
 
     print("\nDestintaion analysis finished.")
-    sys.exit()
