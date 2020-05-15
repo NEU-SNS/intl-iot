@@ -351,6 +351,7 @@ class DomainExport(DataPresentation):
     def exportDataRows(self):
         csv_data = "\n".join([",".join(r) for r in self.dataRows])+"\n"
         saveStr = ""
+        out_dirname = os.path.dirname(self.options.outputFile)
 
         self.lock.acquire()
 
@@ -358,7 +359,10 @@ class DomainExport(DataPresentation):
             saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organization\n"
    
         saveStr += csv_data
-    
+
+        if out_dirname != "" and not os.path.isdir(out_dirname):
+            os.system("mkdir -pv " + out_dirname)
+
         with open(self.options.outputFile, 'a+') as f:
             f.write(saveStr)
 
