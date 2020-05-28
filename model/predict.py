@@ -13,13 +13,16 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 dir_online_features = 'online_features'
-columns_intermediate = ['frame_no','ts', 'ts_delta','protocols', 'frame_len', 'eth_src', 'eth_dst',
-                        'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport', 'http_host', 'sni', 'udp_srcport', 'udp_dstport']
+columns_intermediate = ['frame_no','ts', 'ts_delta', 'protocols', 'frame_len', 'eth_src',
+                        'eth_dst', 'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport',
+                        'http_host', 'sni', 'udp_srcport', 'udp_dstport']
 
-columns_state_features = [ "meanBytes", "minBytes", "maxBytes", "medAbsDev", "skewLength", "kurtosisLength",
-                           "q10", "q20", "q30", "q40", "q50", "q60", "q70", "q80", "q90", "spanOfGroup",
-                           "meanTBP", "varTBP", "medianTBP", "kurtosisTBP", "skewTBP","network_to","network_from",
-                           "network_both","network_to_external","network_local","anonymous_source_destination","device", "state"]
+columns_state_features = ["meanBytes", "minBytes", "maxBytes", "medAbsDev", "skewLength",
+                          "kurtosisLength", "q10", "q20", "q30", "q40", "q50", "q60",
+                          "q70", "q80", "q90", "spanOfGroup", "meanTBP", "varTBP",
+                          "medianTBP", "kurtosisTBP", "skewTBP", "network_to", "network_from",
+                          "network_both", "network_to_external", "network_local",
+                          "anonymous_source_destination", "device", "state"]
 columns_detect_sequence = ['ts', 'ts_end','ts_delta', 'num_pkt', 'state']
 save_extracted_features = False
 
@@ -27,11 +30,11 @@ RED = "\033[31;1m"
 END = "\033[0m"
 
 usage_stm = """
-Usage: python {prog_name} pcap_path model_dir device_name model_name result_path
+Usage: python3 {prog_name} pcap_path model_dir device_name model_name result_path
 
 Uses a model to predict the device activity given network traffic of that device.
 
-Example: python {prog_name} yi_camera_sample.pcap tagged-models/us/ yi-camera rf sample.csv
+Example: python3 {prog_name} yi_camera_sample.pcap tagged-models/us/ yi-camera rf results.csv
 
 Arguments:
   pcap_path:   path to the pcap file with unknown device activity
@@ -44,20 +47,29 @@ Arguments:
 
 Note: The dbscan and spectral algorithms cannot be used for prediction.
 
-For more information, see model_details.md.""".format(prog_name=sys.argv[0])
+For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
 
-def usage():
-    print(usage_stm, file=sys.stderr)
-    exit(1)
+#isError is either 0 or 1
+def print_usage(isError):
+    if isError == 0:
+        print(usage_stm)
+    else:
+        print(usage_stm, file=sys.stderr)
+    exit(isError)
 
 def main():
     global dir_models
     path = sys.argv[0]
     print("Running %s..." % path)
 
+    for arg in sys.argv:
+        if arg in ("-h", "--help"):
+            print_usage(0)
+
     if len(sys.argv) != 6:
-        print("%s%s: Error: 5 arguments required. %d arguments found.%s" % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
-        usage()
+        print("%s%s: Error: 5 arguments required. %d arguments found.%s"
+                % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
+        print_usage(1)
 
     pcap_path = sys.argv[1]
     dir_models = sys.argv[2] + "/" + sys.argv[4]
@@ -68,34 +80,43 @@ def main():
 
     errors = False
     if not pcap_path.endswith('.pcap'):
-        print("%s%s: Error: \"%s\" is not a pcap file.%s" % (RED, path, pcap_path, END), file=sys.stderr)
+        print("%s%s: Error: \"%s\" is not a pcap (.pcap) file.%s"
+                % (RED, path, pcap_path, END), file=sys.stderr)
         errors = True
     elif not os.path.isfile(pcap_path):
-        print("%s%s: Error: The pcap file \"%s\" does not exist.%s" % (RED, path, pcap_path, END), file=sys.stderr)
+        print("%s%s: Error: The pcap file \"%s\" does not exist.%s"
+                % (RED, path, pcap_path, END), file=sys.stderr)
         errors = True
 
     if not file_result.endswith('.csv'):
-        print("%s%s: Error: Output file \"%s\" is not a CSV file.%s" % (RED, path, file_result, END), file=sys.stderr)
+        print("%s%s: Error: Output file \"%s\" is not a CSV (.csv) file.%s"
+                % (RED, path, file_result, END), file=sys.stderr)
         errors = True
     
     if not model_name in ("kmeans", "knn", "rf"):
-        print("%s%s: Error: \"%s\" is not a valid model name. Choose from: kmeans, knn, or rf.%s" % (RED, path,  model_name, END), file=sys.stderr)
+        print("%s%s: Error: \"%s\" is not a valid model name. Choose from: kmeans, knn, or rf.%s"
+                % (RED, path, model_name, END), file=sys.stderr)
         errors = True
     elif not os.path.isdir(dir_models):
-        print("%s%s: Error: The model directory \"%s\" does not exist.%s" % (RED, path, dir_models, END), file=sys.stderr)
+        print("%s%s: Error: The model directory \"%s\" is not a directory.%s"
+                % (RED, path, dir_models, END), file=sys.stderr)
         errors = True
     else:
         file_model = '%s/%s%s.model' % (dir_models, device, model_name)
         file_labels = '%s/%s.label.txt' % (dir_models, device)
         if not os.path.isfile(file_model):
-            print("%s%s: Error: The model file %s cannot be found. Please regenerate file, check directory name, or check device name.%s" % (RED, path, file_model, END), file=sys.stderr)
+            print("%s%s: Error: The model file %s cannot be found.\n"
+                    "    Please regenerate file, check directory name, or check device name.%s"
+                    % (RED, path, file_model, END), file=sys.stderr)
             errors = True
         if not os.path.isfile(file_labels):
-            print("%s%s: Error: The label file %s cannot be found. Please regenerate file, check directory name, or check device name.%s" % (RED, path, file_labels, END), file=sys.stderr)
+            print("%s%s: Error: The label file %s cannot be found.\n"
+                    "    Please regenerate file, check directory name, or check device name.%s"
+                    % (RED, path, file_labels, END), file=sys.stderr)
             errors = True
 
     if errors:
-        usage()
+        print_usage(1)
 
     print("Input pcap: %s" % pcap_path)
     print("Input model directory: %s" % dir_models)
@@ -109,7 +130,11 @@ def main():
     if os.path.isfile(file_intermediate):
         print("%s exists. Delete it to reparse the pcap file." % file_intermediate)
     else:
-        os.system("tshark -r %s -Y ip -Tfields -e frame.number -e frame.time_epoch -e frame.time_delta -e frame.protocols -e frame.len -e eth.src -e eth.dst -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e http.host -e udp.srcport -e udp.dstport -E separator=/t > %s 2>/dev/null" % (pcap_path, file_intermediate))
+        os.system("tshark -r %s -Y ip -Tfields -e frame.number -e frame.time_epoch"
+                  " -e frame.time_delta -e frame.protocols -e frame.len -e eth.src"
+                  " -e eth.dst -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport"
+                  " -e http.host -e udp.srcport -e udp.dstport -E separator=/t > %s"
+                  " 2>/dev/null" % (pcap_path, file_intermediate))
 
     os.system('mkdir -pv `dirname %s`' % file_result)
     res = predict(device, file_intermediate)
@@ -339,3 +364,4 @@ def print_list(l, prefix=''):
 
 if __name__ == '__main__':
     main()
+

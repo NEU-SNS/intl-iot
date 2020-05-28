@@ -58,31 +58,39 @@ RED = "\033[31;1m"
 END = "\033[0m"
 
 usage_stm = """
-Usage: python {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-dknrs]
+Usage: python3 {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-dknrs]
 
 Trains anaylzed pcap files and produces one or more models using different algorithms
 that can predict device activity.
 
-Example: python {prog_name} -f features/us/ -m tagged-models/us/ -kn
+Example: python3 {prog_name} -f features/us/ -m tagged-models/us/ -kn
 
-Arguments:
+Required arguments:
   -f IN_FEATURES_DIR path to a directory containing CSV files of statistically-analyzed
-                       pcap files; option required
+                       pcap files
   -m OUT_MODELS_DIR  path to the directory to put the generated models; this directory
-                       will be created if it does not exist; option required
-  -d                 produce a model using the dbscan algorithm
-  -k                 produce a model using the kmeans algorithm
-  -n                 produce a model using the knn algorithm
-  -r                 produce a model using the rf algorithm
-  -s                 produce a model using the spectral algorithm
+                       will be created if it does not exist
 
-Note: If no model is chosen, all of the models will be produced.""".format(prog_name=sys.argv[0])
+Optional arguments:
+  -d produce a model using the dbscan algorithm
+  -k produce a model using the kmeans algorithm
+  -n produce a model using the knn algorithm
+  -r produce a model using the rf algorithm
+  -s produce a model using the spectral algorithm
+  -h print this usage statement and exit
 
+Note: If no model is chosen, all of the models will be produced.
 
-def print_usage():
-    print(usage_stm, file=sys.stderr)
-    exit(1)
+For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
 
+#isError is either 0 or 1
+def print_usage(isError):
+    if isError == 0:
+        print(usage_stm)
+    else:
+        print(usage_stm, file=sys.stderr)
+    
+    exit(isError)
 
 def main():
     # test()
@@ -91,8 +99,7 @@ def main():
     print("Running %s..." % path)
 
     # Parse Arguments
-    print("Reading command line arguments...")
-    parser = argparse.ArgumentParser(usage=usage_stm)
+    parser = argparse.ArgumentParser(usage=usage_stm, add_help=False)
     parser.add_argument("-f", dest="root_feature", default="")
     parser.add_argument("-m", dest="root_model", default="")
     parser.add_argument("-d", dest="dbscan", action="store_true", default=False)
@@ -100,17 +107,21 @@ def main():
     parser.add_argument("-n", dest="knn", action="store_true", default=False)
     parser.add_argument("-r", dest="rf", action="store_true", default=False)
     parser.add_argument("-s", dest="spectral", action="store_true", default=False)
+    parser.add_argument("-h", dest="help", action="store_true", default=False)
     args = parser.parse_args()
 
+    if args.help:
+        print_usage(0)
+
     # Error checking command line args
-    print("Performing error checking on command line arguments...")
     done = False
     if args.root_feature == "":
         done = True
         print("%s%s: Error: Features directory (-f) required.%s" % (RED, path, END), file=sys.stderr)
     elif not os.path.isdir(args.root_feature):
         done = True
-        print("%s%s: Error: The features directory \"%s\" does not exist.%s" % (RED, path, args.root_features, END), file=sys.stderr)
+        print("%s%s: Error: The features directory \"%s\" is not a directory.%s"
+                % (RED, path, args.root_features, END), file=sys.stderr)
     else:
         root_feature = args.root_feature
 
@@ -139,7 +150,7 @@ def main():
         model_list = default_models.copy()
 
     if done:
-        print_usage()
+        print_usage(1)
 
     print("Input files located in: %s" % root_feature)
     print("Output files placed in: %s" % root_model)
@@ -185,7 +196,8 @@ def train_models():
                 off.write('%s\n' % '\t'.join(map(str, tmp_res)))
                 print('Agg saved to %s' % tmp_outfile)
     t1 = time.time()
-    print('Time to train all models for %s devices using %s threads: %.2f' % (len(lparas),num_pools, (t1 - t0)))
+    print('Time to train all models for %s devices using %s threads: %.2f'
+            % (len(lparas),num_pools, (t1 - t0)))
     # p.map(target=eval_individual_device, args=(lfiles, ldnames))
 
 
@@ -196,8 +208,8 @@ def eid_wrapper(a):
 def eval_individual_device(train_data_file, dname, specified_models=None):
     global root_feature, root_model, root_output, dir_tsne_plots
     """
-    Assumptions: the train_data_file contains only 1 device, all possible states(tags); the models can only be 
-    one of the implementated: knn, kmeans, dbscan, random forest classifier  
+    Assumptions: the train_data_file contains only 1 device, all possible states(tags);
+    the models can only be one of the implementated: knn, kmeans, dbscan, random forest classifier
     """
     warnings.simplefilter("ignore", category=DeprecationWarning)
     warnings.simplefilter("ignore", category=FutureWarning)
@@ -224,6 +236,7 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
     if len(list_models_todo) < 1:
         print('skip %s, all models trained for alg: %s' % (dname, str(list_all_models)))
         return
+
     print('Training %s using algorithm(s): %s' % (dname, str(list_models_todo)))
     train_data = pd.read_csv(train_data_file)
 
@@ -231,6 +244,7 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
     if num_data_points < 1:
         print('  No enough data points for %s' % dname)
         return
+
     print('\t#Total data points: %d ' % num_data_points)
     X_feature = train_data.drop(['device', 'state'], axis=1).fillna(-1)
     ss= StandardScaler()
@@ -246,7 +260,8 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
     """
     Split data set into train & test, default fraction is 30% test
     """
-    X_train, X_test, y_train, y_test = train_test_split(X_feature, y_labels, test_size=.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+            X_feature, y_labels, test_size=.3, random_state=42)
     print('Train: %s' % len(X_train))
     print('Test: %s' % len(X_test))
 
@@ -304,7 +319,8 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
 
         elif model_alg == 'spectral':
             print('  Spectral Clustering: n_clusters=%s' % num_lables)
-            trained_model = SpectralClustering(n_clusters=num_lables, affinity='nearest_neighbors', random_state=0)
+            trained_model = SpectralClustering(n_clusters=num_lables,
+                    affinity='nearest_neighbors', random_state=0)
             trained_model.fit(X_train)
 
             y_predicted_1d = trained_model.fit_predict(X_test).round()
@@ -374,8 +390,8 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
         """
         # TODO: due to the multi-thread, needs to change the settings
         with open(single_outfile, 'a+') as off:
-            off.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (dname, _acc_score, _homogeneity, _complete,
-                                                            _vmeasure, _ari, _noise, _silhouette))
+            off.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n'
+                    % (dname, _acc_score, _homogeneity, _complete,                                                          _vmeasure, _ari, _noise, _silhouette))
             # y_test_bin_1d, y_predicted_1d
             off.write('%s\n' % ','.join(map(str, y_test_bin_1d)))
             off.write('%s\n' % ','.join(map(str, y_predicted_1d)))
