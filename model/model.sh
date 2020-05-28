@@ -1,6 +1,6 @@
 #!/bin/bash
 
-usage() {
+print_usage() {
     exit_stat=$1
     usg_stm="
 Usage: $path [OPTION]...
@@ -12,38 +12,38 @@ text files. Statistical analysis is performed on this data, which can then
 be used to generate the machine learning models. There currently are three
 algorithms available to generate the models.
 
-Example: $path -i exp_list.txt -rn -v yi-camera -l knn -p yi_camera_sample.pcap -o sample.csv
+Example: $path -i exp_list.txt -rn -v yi-camera -l knn -p yi_camera_sample.pcap -o results.csv
 
 Options:
-  -i EXP_LIST_PATH path to text file containing filepaths to the pcap files to be used
+  -i EXP_LIST   path to text file containing filepaths to the pcap files to be used
                      to generate machine learning models (Default = exp_list.txt)
-  -t IMD_DIR       path to the directory to place the decoded pcap files
+  -t IMD_DIR    path to the directory to place the decoded pcap files
                      (Default = tagged-intermediate/us/)
-  -f FEATURES_DIR  path to the directory to place the statistically-analyzed files
+  -f FEAT_DIR   path to the directory to place the statistically-analyzed files
                      (Default = features/us/)
-  -m MODELS_DIR     path to the directory to place the generated models
+  -m MODELS_DIR path to the directory to place the generated models
                      (Default = tagged-models/us/)
-  -d               generate a model using the dbscan algorithm
-  -k               generate a model using the kmeans algorithm
-  -n               generate a model using the knn algorithm
-  -r               generate a model using the rf algorithm
-  -s               generate a model using the spectral algorithm
-  -p PCAP_PATH     path to the pcap file with unknown device activity
+  -d            generate a model using the DBSCAN algorithm
+  -k            generate a model using the k-means algorithm
+  -n            generate a model using the k-nearest neighbors (KNN) algorithm
+  -r            generate a model using the random forest (RF) algorithm
+  -s            generate a model using the spectral clustering algorithm
+  -p IN_PCAP    path to the pcap file with unknown device activity
                      (Default = yi_camera_sample.pcap)
-  -v DEVICE_NAME   name of the device that generated the data in PCAP_PATH
+  -v DEV_NAME   name of the device that generated the data in IN_PATH
                      (Default = yi-camera)
-  -l MODEL_NAME    name of the model to be used to predict the device activity in
-                     PCAP_PATH; choose from kmeans, knn, or rf; dbscan and spectral
+  -l MODEL_NAME name of the model to be used to predict the device activity in
+                     IN_PATH; choose from kmeans, knn, or rf; dbscan and spectral
                      cannot be used for prediction (Default = rf)
-  -o RESULT_PATH   path to a CSV file to write the results of predicting the
-                     device activity of PCAP_PATH (Default = sample.csv)
-  -h               display this help message
+  -o OUT_CSV    path to a CSV file to write the results of predicting the
+                     device activity of IN_PATH (Default = results.csv)
+  -h            display this usage statement and exit
 
 Notes: 
- - All directories and RESULT_PATH will be generated if they currently do not exist.
- - If no model is specified to be generated, all three models will be generated.
+ - All directories and out_CSV will be generated if they currently do not exist.
+ - If no model is specified to be generated, all five models will be generated.
 
-For more information, see model_details.md."
+For more information, see the README and model_details.md."
 
     if [ $exit_stat -eq 0 ]
     then
@@ -86,10 +86,10 @@ read_args() {
                 result_path="$OPTARG"
                 ;;
             h)
-                usage 0
+                print_usage 0
                 ;;
             *)
-                usage 1
+                print_usage 1
                 ;;
         esac
     done
@@ -101,8 +101,6 @@ read_args() {
 }
 
 check_args_files() {
-    echo -e "Checking files and arguments...\n"
-
     errors=false
 
     #Check raw2intermediate script exists and has proper permissions
@@ -182,7 +180,7 @@ check_args_files() {
 
     if [[ $errors == true ]]
     then
-        usage 1
+        print_usage 1
     fi
 }
 
@@ -203,15 +201,15 @@ run_pipeline() {
     check_ret_code $? $raw2int
 
     echo -e "\nStep 2: Performing statistical analysis..."
-    python -W ignore $ext_features $intermediate_dir $features_dir
+    python3 -W ignore $ext_features $intermediate_dir $features_dir
     check_ret_code $? $ext_features
 
     echo -e "\nStep 3: Training data and creating model..."
-    python -W ignore $train_models -f $features_dir -m $models_dir -$model_gen
+    python3 -W ignore $train_models -f $features_dir -m $models_dir -$model_gen
     check_ret_code $? $train_models
 
     echo -e "\nStep 4: Predicting device activity..."
-    python -W ignore $predict $pcap_path $models_dir $device_name $model_name $result_path
+    python3 -W ignore $predict $pcap_path $models_dir $device_name $model_name $result_path
     check_ret_code $? $predict
 }
 
@@ -238,7 +236,7 @@ model_gen=""
 pcap_path="${model_dir}/yi_camera_sample.pcap"
 device_name="yi-camera"
 model_name="rf"
-result_path="${model_dir}/sample.csv"
+result_path="${model_dir}/results.csv"
 
 read_args $@
 
@@ -303,3 +301,4 @@ fi
 echo "Time to run pipeline: $hrs hours $min minutes $sec seconds"
 
 echo -e "\nContent analysis finished."
+

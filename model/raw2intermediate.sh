@@ -1,6 +1,7 @@
 #!/bin/bash
 
-usage() {
+print_usage() {
+    exit_stat=$1
     usg_stm="
 Usage: $0 exp_list out_imd_dir
 
@@ -15,8 +16,13 @@ Arguments:
                  
 For more information, see model_details.md."
 
-    echo -e "$usg_stm" >&2
-    exit 1
+    if [ $exit_stat -eq 0 ]
+    then
+        echo -e "$usg_stm"
+    else
+        echo -e "$usg_stm" >&2
+    fi
+    exit $exit_stat
 }
 
 extract_pcap() {
@@ -44,11 +50,19 @@ echo "Running $0..."
 red="\e[31;1m"
 end="\e[0m"
 
+for arg in "$@"
+do
+    if [ "$arg" == "-h" ] || [ "$arg" == "--help" ]
+    then
+        print_usage 0
+    fi
+done
+
 #Check for 2 arguments
 if [ $# -ne 2 ]
 then
     echo -e "${red}$0: Error: 2 arguments required. $# arguments found.$end" >&2
-    usage
+    print_usage 1
 fi
 
 inputFile=$1
@@ -58,11 +72,11 @@ dirIntermediate=$2
 if [[ $inputFile != *.txt ]]
 then
     echo -e "${red}$0: Error: Input file must be a text file (.txt). Received $1.$end" >&2
-    usage
+    print_usage 1
 elif ! [ -e $inputFile ]
 then
     echo -e "${red}$0: Error: The input file $inputFile does not exist.$end" >&2
-    usage
+    print_usage 1
 fi
 
 echo "Input files located in: $inputFile"
@@ -101,3 +115,4 @@ do
     fi
 fi
 done < $inputFile
+

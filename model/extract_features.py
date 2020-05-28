@@ -6,14 +6,18 @@ import numpy as np
 from scipy.stats import kurtosis
 from scipy.stats import skew
 from statsmodels import robust
-columns_intermediate = ['frame_no','ts', 'ts_delta','protocols', 'frame_len', 'eth_src', 'eth_dst',
-                        'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport', 'http_host', 'sni', 'udp_srcport', 'udp_dstport']
 
-columns_state_features = [ "meanBytes", "minBytes", "maxBytes", "medAbsDev", "skewLength", "kurtosisLength",
-                           "q10", "q20", "q30", "q40", "q50", "q60", "q70", "q80", "q90", "spanOfGroup",
-                           "meanTBP", "varTBP", "medianTBP", "kurtosisTBP", "skewTBP", "network_to", "network_from",
-                           "network_both", "network_to_external", "network_local", "anonymous_source_destination", "device", "state"]
+columns_intermediate = ['frame_no', 'ts', 'ts_delta', 'protocols', 'frame_len', 'eth_src',
+                        'eth_dst', 'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport',
+                        'http_host', 'sni', 'udp_srcport', 'udp_dstport']
 
+columns_state_features = ["start_time", "end_time", "meanBytes", "minBytes", "maxBytes",
+                            "medAbsDev", "skewLength",
+                          "kurtosisLength", "q10", "q20", "q30", "q40", "q50", "q60",
+                          "q70", "q80", "q90", "spanOfGroup", "meanTBP", "varTBP",
+                          "medianTBP", "kurtosisTBP", "skewTBP", "network_to", "network_from",
+                          "network_both", "network_to_external", "network_local",
+                          "anonymous_source_destination", "device", "state"]
 
 # import warnings
 
@@ -32,33 +36,45 @@ RED = "\033[31;1m"
 END = "\033[0m"
 
 usage_stm = """
-Usage: python {prog_name} in_imd_dir out_features_dir
+Usage: python3 {prog_name} in_imd_dir out_features_dir
 
 Performs statistical analysis on decoded pcap files.
 
-Example: python {prog_name} tagged-intermediate/us/ features/us/
+Example: python3 {prog_name} tagged-intermediate/us/ features/us/
 
 Arguments:
   in_imd_dir:       path to a directory containing text files of decoded pcap data
   out_features_dir: path to the directory to write the analyzed CSV files;
                       directory will be generated if it does not already exist
 
-For more information, see model_details.md.""".format(prog_name=sys.argv[0])
-def usage():
-    print(usage_stm, file=sys.stderr)
-    exit(1)
+For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
+
+#isError is either 0 or 1
+def print_usage(isError):
+    if isError == 0:
+        print(usage_stm)
+    else:
+        print(usage_stm, file=sys.stderr)
+    exit(isError)
 
 def main():
     global root_exp, root_feature
     path = sys.argv[0]
     print("Running %s..." % path)
 
+    for arg in sys.argv:
+        if arg in ("-h", "--help"):
+            print_usage(0)
+
     if len(sys.argv) != 3:
-        print("%s%s: Error: 2 arguments required. %d arguments found.%s" % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
-        usage()
+        print("%s%s: Error: 2 arguments required. %d arguments found.%s"
+                % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
+        print_usage(1)
+
     if not os.path.isdir(sys.argv[1]):
-        eprint("%s%s: Error: Input directory %s does not exist!%s" % (RED, path, sys.argv[1], END), file=sys.stderr)
-        usage()
+        print("%s%s: Error: Input directory %s does not exist!%s"
+                % (RED, path, sys.argv[1], END), file=sys.stderr)
+        print_usage(1)
 
     root_exp = sys.argv[1]
     root_feature = sys.argv[2]
@@ -99,7 +115,8 @@ def prepare_features():
                 else:
                     state = dir_exp
                     device = dir_device
-                feature_file = root_feature + '/caches/' + device + '_' + state + '_' + intermediate_file[:-4] + '.csv' #Output cache files
+                feature_file = (root_feature + '/caches/' + device + '_' + state
+                        + '_' + intermediate_file[:-4] + '.csv') #Output cache files
                 paras = (full_intermediate_file, feature_file, group_size, device, state)
                 #Dict contains devices that do not have an output file
                 if device not in dict_intermediates:
@@ -125,7 +142,8 @@ def prepare_features():
             group_size = paras[2]
             device = paras[3]
             state = paras[4]
-            tmp_data = load_features_per_exp(full_intermediate_file, feature_file, group_size, device, state)
+            tmp_data = load_features_per_exp(
+                    full_intermediate_file, feature_file, group_size, device, state)
             if tmp_data is None or len(tmp_data) == 0:
                 continue
             list_data.append(tmp_data)
@@ -176,6 +194,8 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
 
 #Use Pandas to perform stat analysis on raw data
 def compute_tbp_features(pd_obj, deviceName, state):
+    startTime = pd_obj.ts.iloc[0]
+    endTime = pd_obj.ts.iloc[pd_obj.shape[0] - 1]
     meanBytes = pd_obj.frame_len.mean()
     minBytes = pd_obj.frame_len.min()
     maxBytes = pd_obj.frame_len.max()
@@ -214,7 +234,7 @@ def compute_tbp_features(pd_obj, deviceName, state):
 
 
 
-    d = [meanBytes, minBytes, maxBytes,
+    d = [startTime, endTime, meanBytes, minBytes, maxBytes,
          medAbsDev, skewL, kurtL, percentiles[0],
          percentiles[1], percentiles[2], percentiles[3],
          percentiles[4], percentiles[5], percentiles[6],
@@ -226,3 +246,4 @@ def compute_tbp_features(pd_obj, deviceName, state):
 
 if __name__ == '__main__':
     main()
+
