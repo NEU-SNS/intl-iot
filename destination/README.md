@@ -7,44 +7,46 @@ Before starting, go to https://dev.maxmind.com/geoip/geoip2/geolite2/ to create 
 
 ## Usage
 
-Usage: `python3 analyze.py -i IN_PCAP {-m MAC_ADDR | -d DEV} [OPTION]... [-g PLOT -p PROTO [GRAPH_OPTION]...]...`
+Usage: `python3 analyze.py -i IN_DIR {-m MAC_ADDR | -d DEV} [OPTION]... [-g PLOT -p PROTO [GRAPH_OPTION]...]...`
 
-Example: `python3 analyze.py -i iot-data/uk/echodot/voice/2019-04-26_17:12:55.23s.pcap -d echodot -o output.csv`
+Example: `python3 analyze.py -i iot-data/uk/echodot/voice/ -d echodot -o output.csv -n 4`
 
-Example: `python3 analyze.py -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -f figoutput/ -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv`
+Example: `python3 analyze.py -i iot-data/us/appletv/local_menu/ -m 7c:61:66:10:46:18 -f figoutput/ -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv`
 
-Example: `python3 analyze.py -i iot-data/uk/echodot/voice/2019-04-26_17:12:55.23s.pcap -d echodot -o output.csv -g LinePlot -p eth-snd,eth-rcv -g BarPlot -p eth-snd,eth-rcv`
+Example: `python3 analyze.py -i iot-data/uk/echodot/voice/ -d echodot -o output.csv -g LinePlot -p eth-snd,eth-rcv -g BarPlot -p eth-snd,eth-rcv`
 
 ### Input
 There are required arguments as well as several optional arguments which one can choose from. Below is a summary of all the options:
 
 #### Options:
 
-`-i IN_PCAP` - The path to the input pcap file to be analyzed. **Option required.**
+`-i IN_DIR` - The path to the directory containing input pcap file to be analyzed. **Option required.**
 
-`-m MAC_ADDR` - MAC address of the device that generated the data in `IN_PCAP`. **Option required if `DEV` not specified.**
+`-m MAC_ADDR` - MAC address of the device that generated the data in `IN_DIR`. **Option required if `DEV` not specified.**
 
-`-d DEV` - The name of the device used to generate the data in `IN_PCAP`. **Option required if `MAC_ADDR` not specified.**
+`-d DEV` - The name of the device used to generate the data in `IN_DIR`. **Option required if `MAC_ADDR` not specified.**
 
 `-c DEV_LIST` - The path to a text file containing the names of devices along with the devices' MAC addresses. Each device is on its own line, with each line having the format: `[MAC_ADDR] [DEVICE]`. Default is `aux/devices_uk.txt`.
 
-`-a IP_ADDR` - IP address of the device used to create the date in `IN_PCAP`.
+`-a IP_ADDR` - IP address of the device used to create the date in `IN_DIR`.
 
-`-s HOSTS` - The path to a file produced by TShark extracting hosts from `IN_PCAP`.
+`-s HOSTS` - The path to a file produced by TShark extracting hosts from `IN_DIR`.
 
-`-b LAB` - The name of the lab that `IN_PCAP` was generated in.
+`-b LAB` - The name of the lab that the pcap files in `IN_DIR` were generated in.
 
-`-e EXP` - The name of the experiment that `IN_PCAP` is a part of.
+`-e EXP` - The name of the experiment that the pcap files in `IN_DIR` are a part of.
 
 `-w NETWORK` - The name of the network.
 
 `-t` - Do not perform a time shift.
 
-`-n` - Find domains which do not reply.
+`-y` - Find domains which do not reply.
 
 `-f FIG_DIR` - The path to a directory to place generated plots. Directory will be generated if it does not currently exist. Default is `figures/`.
 
 `-o OUT_CSV` - The path to the output CSV file. If it exists, results will be appended, else, it will be created. Default is `results.csv`.
+
+`-n NUM_PROC` - The number of processes to use to analyze the pcap files. Default is 1.
 
 `-h` - Print the usage statement and exit.
 
@@ -59,8 +61,8 @@ There are required arguments as well as several optional arguments which one can
 
 #### Notes
 Required options:
-- The `-i` option is required. This is the path to the input pcap file to be processed.
-- The MAC address of the device whose traffic is recorded in the pcap file is also needed. Inputting the MAC address can be done in two ways:
+- The `-i` option is required. This is the path to a directory containing input pcap file to be processed.
+- The MAC address of the device whose traffic is recorded in the pcap files is also needed. Inputting the MAC address can be done in two ways:
   - Input the MAC address using the `-m` option.
   - Input the device name in the `-d` option, and input the file name to a list of devices using the `-c` option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
 
@@ -92,10 +94,11 @@ All traffic is included in the "eth" (ethernet) protocol, so to analyze all sent
 - `TSharkHost` - Uses the list produced by the `tshark` utility, which extracts hosts from the `.pcap` file. If a domain is not found, reverse DNS lookup is used.
 
 ### Output
-When `analyze.py` is run, a CSV containing an analysis of the input pcap file is produced. By default, the CSV is stored in `results.csv`. However, the output file name can be changed by using the `-o` option. If the requested output file name already exists, the program will append the new data instead of overwriting.
+When `analyze.py` is run, a CSV containing an analysis of the input pcap files is produced. By default, the CSV is stored in `results.csv`. However, the output file name can be changed by using the `-o` option. If the requested output file name already exists, the program will append the new data instead of overwriting.
 
-The CSV file has 15 headings. Their meanings are listed below:
+The CSV file has 16 headings. Their meanings are listed below:
 
+- `ts` - The timestamp of when the first packet of the input file was generated.
 - `device` - The input into the `-d` option.
 - `ip` - The IP address of the packets being analyzed.
 - `host` - The domain name of the IP address. If not found, the IP address is used.
@@ -109,7 +112,7 @@ The CSV file has 15 headings. Their meanings are listed below:
 - `lab` - The input into the `-b` option.
 - `experiment` - The input into the `-e` option.
 - `network` - The input into the `-n` option.
-- `input_file` - The input pcap file while the data was generated from.
+- `input_file` - The input pcap file name from which the data was generated from.
 - `organization` - The organization that the IP address belongs to. If not found, "N/A" is displayed.
 
 If graphs are produced, they will be stored in the `figures/` directory by default. The output directory can be changed by using the `-f` option. Each time `analyze.py` is run, exactly one PNG file is produced if one or more `-g` options are specified. The PNG file contains all the graphs specified. The name of the PNG file is a santized version of the argument given into the `-i` option followed by the type(s) of graphs produced.
