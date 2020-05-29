@@ -1,24 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import threading
 
 from . import Stats, IP, Constants
 
 class PlotManager(object):
-    def __init__(self, stats, graphs, options, geoDbCity, geoDbCountry):
+    def __init__(self, stats, graphs):
         self.graphs = graphs
         self.subPlotCounter = 1
         self.stats = stats
-        self.options = options
 
     def showGraphs(self):
         for graph in self.graphs:
             print(graph)
 
-    def generatePlot(self):
+    def generatePlot(self, pcap_file, figDir, ipAttr):
         plt.figure(figsize=(15, 15))
-        plt.title(self.options.inputFile)
+        plt.title(pcap_file)
 
         for plot in self.graphs:
             plt.subplot(len(self.graphs), 1, self.subPlotCounter)
@@ -31,7 +29,7 @@ class PlotManager(object):
                 plt.ylabel("Packet Size (bytes)")
                 self.generateLinePlot(plot, plot.plot)
             elif plot.plot in ["PiePlot", "BarHPlot"]:
-                if self.options.ipAttr == None or self.options.ipAttr == "addrPacketSize":
+                if ipAttr == None or ipAttr == "addrPacketSize":
                     plt.xlabel("Packet Size (bytes)")
                 else:
                     plt.xlabel("Number Packets")
@@ -40,10 +38,10 @@ class PlotManager(object):
 
             self.subPlotCounter += 1 
    
-        if not os.path.isdir(self.options.figDir):
-            os.system('mkdir -pv %s' % self.options.figDir)
-        graphPath = os.path.join(self.options.figDir,
-            self.sanitiseFileName(self.options.inputFile, self.graphs))
+        if not os.path.isdir(figDir):
+            os.system('mkdir -pv %s' % figDir)
+
+        graphPath = os.path.join(figDir, self.sanitiseFileName(pcap_file, self.graphs))
         plt.savefig(graphPath)
         print("Plot successfully saved to \"%s\"" % graphPath)
         #plt.show()
@@ -62,7 +60,7 @@ class PlotManager(object):
 
         self.lp.plotFig()
 
-    def generatePiePlot(self, options, className, geoDbCity, geoDbCountry):
+    def generatePiePlot(self, options, className):
         self.pp = globals()[className](self.stats, plt, self.ipMap)
         for protocol in options.protocol.split(','):
             self.pp.splitIPBy(protocol, options.ipLoc, options.ipAttr)
@@ -259,15 +257,13 @@ class FreqPlot(DataPresentation):
         self.plot.plot(self.freq, self.fft.real, self.freq, self.fft.imag)
 
 class DomainExport(DataPresentation):
-    def __init__(self, stats, ipMapping, options, geoDbCity, geoDbCountry):
+    def __init__(self, stats, ipMapping, geoDbCity, geoDbCountry):
         self.fields = []
         self.fileName = ""
         self.layers = []
         self.dataRows = []
         self.ipResolver = IP.IPResolver(ipMapping, geoDbCity, geoDbCountry)
         self.domains = {'packetSize': {}, 'packetNum': {}}
-        self.options = options
-        self.lock = threading.Lock()
         super().__init__(stats, None)
 
     def loadIPFor(self, layer):
@@ -306,7 +302,7 @@ class DomainExport(DataPresentation):
             except KeyError:
                 pass
 
-    def loadDomains(self):
+    def loadDomains(self, device, lab, experiment, network, pcap_file, baseTS):
         ips = self.getKeysFromDict(self.domains['packetSize'])
         rows = []
         for ip in ips:
@@ -324,7 +320,8 @@ class DomainExport(DataPresentation):
                 org = "N/A"
 
             row = []
-            row.append(self.options.device)
+            row.append(baseTS)
+            row.append(device)
             row.append(ip)
             row.append(domain)
             row.append(domainFull)
@@ -340,35 +337,18 @@ class DomainExport(DataPresentation):
 
             row.append(country)
             row.append("0")
-            row.append(self.options.lab)
-            row.append(self.options.experiment)
-            row.append(self.options.network)
-            row.append(self.options.inputFile)
+            row.append(lab)
+            row.append(experiment)
+            row.append(network)
+            row.append(pcap_file)
             row.append(org)
 
             self.dataRows.append(row)
 
-    def exportDataRows(self):
+    def exportDataRows(self, outputFile):
         csv_data = "\n".join([",".join(r) for r in self.dataRows])+"\n"
-        saveStr = ""
-        out_dirname = os.path.dirname(self.options.outputFile)
-
-        self.lock.acquire()
-
-        if not os.path.isfile(self.options.outputFile):
-            saveStr = "device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,packet_rcv,country,party,lab,experiment,network,input_file,organization\n"
-   
-        saveStr += csv_data
-
-        if out_dirname != "" and not os.path.isdir(out_dirname):
-            os.system("mkdir -pv " + out_dirname)
-
-        with open(self.options.outputFile, 'a+') as f:
-            f.write(saveStr)
-
-        self.lock.release()
-
-        print("Analyzed data from \"%s\" successfully written to \"%s\"" % (self.options.inputFile, self.options.outputFile))
+        with open(outputFile, 'a+') as f:
+            f.write(csv_data)
 
     def getVal(self, _dict, key):
         if key in _dict:

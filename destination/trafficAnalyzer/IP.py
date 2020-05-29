@@ -272,7 +272,6 @@ class IPMapping(object):
                 words = line.split()
                 for idx, word in enumerate(words): #loop through words in line
                     if word == "A":
-                        #print(ip, host, words[idx + 1], sep="\t")
                         return words[idx + 1]
 
         return None
@@ -291,8 +290,6 @@ class IPMapping(object):
             with open(fileName) as f:
                 hosts = f.readlines()
 
-        #print(str(hosts))
-        #for hostLine in str(hosts).split("\n"):
         for hostLine in hosts:
             try:
                 ip, host = hostLine.split("\t")
@@ -304,7 +301,7 @@ class IPMapping(object):
 
                 self.addHostIP(host.strip(), ip)
             except:
-                print("Error: No hosts found in PCAP file")
+                print("Error: No hosts found in %s" % fileName)
 
     def addHostIP(self, host, ip):
         if ip not in self.ip:
@@ -350,3 +347,4 @@ class IPMapping(object):
 
 class UndefinedMethodError(Exception):
     pass
+

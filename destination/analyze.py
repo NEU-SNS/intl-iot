@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
+from multiprocessing import Process
 
 #from trafficAnalyzer import *  #Import statement below, after package files are checked
 
@@ -86,39 +87,44 @@ if errors:
 
 from trafficAnalyzer import *
 
+options = [] #Main options
+graphs = [] #Graph options
+devices = None
 
 usage_stm = """
-Usage: python3 {prog_name} -i IN_PCAP {{-m MAC_ADDR | -d DEV}} [OPTION]... [-g PLOT -p PROTO [GRAPH_OPTION]...]...
+Usage: python3 {prog_name} -i IN_DIR {{-m MAC_ADDR | -d DEV}} [OPTION]... [-g PLOT -p PROTO [GRAPH_OPTION]...]...
 
-Performs destination analysis on a pcap file. Produces a CSV file detailing the
-organizations that traffic in the PCAP files has been to and the number of
+Performs destination analysis on serveral pcap files. Produces a CSV file detailing
+the organizations that traffic in the pcap files have been to and the number of
 packets that were sent and received from those organizations. The program also
-can produce graphs of this data.
+can produce plotss of this data.
 
-Example: python3 {prog_name} -i iot-data/us/appletv/local_menu/2019-04-10_18:07:36.25s.pcap -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv
+Example: python3 {prog_name} -i iot-data/us/appletv/local_menu/ -m 7c:61:66:10:46:18 -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv
 
 Options:
-  -i IN_PCAP  path to the input pcap file to be analyzed; option required
-  -m MAC_ADDR MAC address of the device that generated the data in IN_PCAP;
+  -i IN_DIR   path to the directory containing input pcap files to be analyzed;
+                option required
+  -m MAC_ADDR MAC address of the device that generated the data in IN_DIR;
                 option required if DEV not specified
-  -d DEV      name of the device used to generate the data in IN_PCAP;
+  -d DEV      name of the device used to generate the data in IN_DIR;
                 option required if MAC_ADDR not specified
   -c DEV_LIST path to a text file containing the names of devices along with
                 the devices' MAC addresses; each device is on its own line,
                 with each line having the format: "[MAC_ADDR] [DEVICE]"
                 (Default = aux/devices_uk.txt)
-  -a IP_ADDR  IP address of the device used to create the date in IN_PCAP
+  -a IP_ADDR  IP address of the device used to create the date in IN_DIR
   -s HOSTS    path to a file produced by TShark extracting hosts from
-                IN_PCAP
-  -b LAB      name of the lab that IN_PCAP was generated in
-  -e EXP      name of the experiment that IN_PCAP is a part of
+                IN_DIR
+  -b LAB      name of the lab that the pcap files in IN_DIR were generated in
+  -e EXP      name of the experiment that the pcap files in IN_DIR are a part of
   -w NETWORK  name of the network
   -t          do not perform a time shift
-  -n          find domains which do not reply
+  -y          find domains which do not reply
   -f FIG_DIR  path to a directory to place generated plots; will be generated
                 if it does not currently exist (Default = figures/)
   -o OUT_CSV  path to the output CSV file; if it exists, results will be
                 appended, else, it will be created (Default = results.csv)
+  -n NUM_PROC number of processes to use to analyze the pcap files (Default = 1)
   -h          print this usage statement and exit
 
 Graph options:
@@ -141,7 +147,7 @@ Notes:
  - The -p, -l, and -r options modify the plot specified by the nearest preceding
      -g option.
  - All plots specified will be placed in one PNG file named:
-     "[sanitized_IN_PCAP_path]_[plot_names].png"
+     "[sanitized_IN_DIR_path]_[plot_names].png"
 
 For more information, see the README.""".format(prog_name=path)
 
@@ -170,7 +176,8 @@ def find_invalid_goptions(args):
     
         print_usage(1)
 
-if __name__ == "__main__":
+def main():
+    global options, graphs, devices
     #Check that GeoLite2 databases exist and have proper permissions
     errors = False
     if not os.path.isdir(geoDir):
@@ -218,7 +225,7 @@ if __name__ == "__main__":
 
     #Main options
     parser = argparse.ArgumentParser(usage=usage_stm, add_help=False)
-    parser.add_argument("-i", dest="inputFile")
+    parser.add_argument("-i", dest="inputDir", default="")
     parser.add_argument("-m", dest="macAddr", default="")
     parser.add_argument("-d", dest="device", default="")
     parser.add_argument("-c", dest="deviceList", default=destDir+"/aux/devices_uk.txt")
@@ -228,9 +235,10 @@ if __name__ == "__main__":
     parser.add_argument("-e", dest="experiment", default="")
     parser.add_argument("-w", dest="network", default="")
     parser.add_argument("-t", dest="noTimeShift", action="store_true", default=False)
-    parser.add_argument("-n", dest="findDiff", action="store_true", default=False)
+    parser.add_argument("-y", dest="findDiff", action="store_true", default=False)
     parser.add_argument("-f", dest="figDir", default=destDir+"/figures")
     parser.add_argument("-o", dest="outputFile", default=destDir+"/results.csv")
+    parser.add_argument("-n", dest="numProc", default="1")
     parser.add_argument("-h", dest="help", action="store_true", default=False)
 
     #Graph Options
@@ -243,8 +251,6 @@ if __name__ == "__main__":
 
     #Parse Arguments
     start = False
-    options = [] #Main Options
-    graphs = [] #Graph Options
     args = [] #Tmp
     for arg in sys.argv:
         if arg == '-g' and not start: #Main Options
@@ -290,20 +296,26 @@ if __name__ == "__main__":
 
     #Error checking command line args
     done = False
-    if options.inputFile == None:
-        print("%s%s: Error: Pcap input file (-i) required.%s" % (RED, path, END), file=sys.stderr)
+    if options.inputDir == "":
+        print("%s%s: Error: Pcap input directory (-i) required.%s"
+                % (RED, path, END), file=sys.stderr)
         done = True
-    elif not options.inputFile.endswith(".pcap"):
-        print("%s%s: Error: The input file should be a pcap (.pcap) file.\n    Received \"%s\".%s"
-                % (RED, path, options.inputFile, END), file=sys.stderr)
+    elif not os.path.isdir(options.inputDir):
+        print("%s%s: Error: The input pcap directory \"%s\" is not a directory.%s"
+                % (RED, path, options.inputDir, END), file=sys.stderr)
         done = True
-    elif not os.path.isfile(options.inputFile):
-        print("%s%s: Error: The input file \"%s\" does not exist.%s"
-                % (RED, path, options.inputFile, END), file=sys.stderr)
-        done = True
+    else:
+        if not os.access(options.inputDir, os.R_OK):
+            print("%s%s: Error: The \"%s\" directory does not have read permission.%s"
+                  % (RED, path, options.inputDir, END), file=sys.stderr)
+            done = True
+        if not os.access(options.inputDir, os.X_OK):
+            print("%s%s: Error: The \"%s\" directory does not have execute permission.%s"
+                  % (RED, path, options.inputDir, END), file=sys.stderr)
+            done = True
 
-    if options.hostsFile == "":
-        options.hostsFile = options.inputFile
+    #if options.hostsFile == "":
+    #    options.hostsFile = options.inputFile
 
     if not options.outputFile.endswith(".csv"):
         print("%s%s: Error: The output file should be a CSV (.csv) file.\n    Received \"%s\".%s"
@@ -346,6 +358,22 @@ if __name__ == "__main__":
             else:
                 options.macAddr = devices.getDeviceMac(options.device)
 
+    bad_proc = False
+    num_proc = 1
+    try:
+        if int(options.numProc) > 0:
+            num_proc = int(options.numProc)
+        else:
+            bad_proc = True
+    except:
+        bad_proc = True
+
+    if bad_proc:
+        print("%s%s: Error: The number of processes must be a positive integer. Received \"%s\".%s"
+              % (RED, path, options.numProc, END), file=sys.stderr)
+        done = True
+
+
     plotTypes = ["StackPlot", "LinePlot", "ScatterPlot", "BarPlot", "PiePlot", "BarHPlot"]
     ipLocTypes = ["", "Country", "Host", "TSharkHost", "RipeCountry", "IP"]
     ipAttrTypes = ["", "addrPacketSize", "addrPacketNum"]
@@ -377,59 +405,123 @@ if __name__ == "__main__":
         print_usage(1)
     #End error checking
 
+    #Create output file if it doesn't exist
+    #Located here because of possible datarace
+    if not os.path.isfile(options.outputFile):
+        out_dirname = os.path.dirname(options.outputFile)
+        if out_dirname != "" and not os.path.isdir(out_dirname):
+            os.system("mkdir -pv " + out_dirname)
 
-    print("Processing PCAP file...")
-    cap = pyshark.FileCapture(options.inputFile, use_json = True)
+        with open(options.outputFile, 'w+') as f:
+            f.write("ts,device,ip,host,host_full,traffic_snd,traffic_rcv,packet_snd,"
+                    "packet_rcv,country,party,lab,experiment,network,input_file,organization\n")
+
+    raw_files = []
+    index = 0
+    # Create the groups to run analysis with processes
+    while index < num_proc:
+        raw_files.append([])
+        index += 1
+
+    index = 0
+    # Split the pcap files into num_proc groups
+    for root, dirs, files in os.walk(options.inputDir):
+        for filename in files:
+            if filename.endswith("pcap") and not filename.startswith("."):
+                raw_files[index].append(root + "/" + filename)
+                index += 1
+                if index >= num_proc:
+                    index = 0
+
+    print("Analyzing input pcap files...\n")
+    procs = []
+
+    # run analysis with num_proc processes
+    pid = 0
+    for files in raw_files:
+        p = Process(target=run, args=(pid, files))
+        procs.append(p)
+        p.start()
+        pid += 1
+
+    for p in procs:
+        p.join()
+
+    print("\nDestintaion analysis finished.")
+
+
+def run(pid, pcap_files):
+    for f in pcap_files:
+        perform_analysis(pid, f)
+
+def perform_analysis(pid, pcap_file):
+    if not pcap_file.endswith(".pcap"):
+        print("%s%s: Error: A file is not a pcap (.pcap) file.\n    Received \"%s\".%s"
+                % (RED, path, pcap_file, END), file=sys.stderr)
+        return
+
+    if not os.path.isfile(pcap_file):
+        print("%s%s: Error: The input file \"%s\" does not exist."
+                % (RED, path, pcap_file, END), file=sys.stderr)
+        return
+
+    print("Proc %s: Processing pcap file \"%s\"..." % (pid, pcap_file))
+    cap = pyshark.FileCapture(pcap_file, use_json = True)
     Utils.sysUsage("PCAP file loading")
 
+    baseTS = 0
     try:
         if options.noTimeShift:
-            baseTS = 0
             cap[0]
         else:
             baseTS = float(cap[0].frame_info.time_epoch)
     except KeyError:
-        print("File {} does not contain any packets.".format(options.inputFile))
-        sys.exit()
+        print("%s%s: Error: The file %s does not contain any packets.%s"
+                % (RED, path, pcap_file, END), file=sys.stderr)
+        return
 
     nodeId = Node.NodeId(options.macAddr, options.ipAddr)
-    nodeStats = Node.NodeStats(nodeId, baseTS, devices, options)
-    print("Processing packets...")
+    nodeStats = Node.NodeStats(nodeId, baseTS, devices)
+
+    print("Proc %s: Processing packets..." % pid)
     for packet in cap:
         nodeStats.processPacket(packet)
 
-    Utils.sysUsage("Packets processed")
-    #print(sorted(list(dict.keys(nodeStats.stats.stats))))
+    cap.close()
 
-    print("Mapping IP to host...")
+    Utils.sysUsage("Packets processed")
+
+    print("Proc %s: Mapping IP to host..." % pid)
     ipMap = IP.IPMapping()
-    ipMap.extractFromFile(options.inputFile)
+    ipMap.extractFromFile(pcap_file)
     ipMap.loadOrgMapping(destDir + "/aux/ipToOrg.csv")
     ipMap.loadCountryMapping(destDir + "/aux/ipToCountry.csv")
 
     Utils.sysUsage("TShark hosts loaded")
 
-    print("Generating output CSV...")
-    de = DataPresentation.DomainExport(nodeStats.stats.stats,
-            ipMap, options, geoDbCity, geoDbCountry)
+    print("Proc %s: Generating CSV output..." % pid)
+    de = DataPresentation.DomainExport(nodeStats.stats.stats, ipMap, geoDbCity, geoDbCountry)
     if options.findDiff:
         de.loadDiffIPFor("eth")
     else:
         de.loadIPFor("eth")
-    de.loadDomains()
-    de.exportDataRows()
-    #sys.exit()
+    de.loadDomains(options.device, options.lab, options.experiment, options.network, pcap_file,
+            str(baseTS))
+    de.exportDataRows(options.outputFile)
+
+    print("Proc %s: Analyzed data from \"%s\" successfully written to \"%s\""
+            % (pid, pcap_file, options.outputFile))
 
     Utils.sysUsage("Data exported")
 
     if len(graphs) != 0:
-        print("Generating plots...")
-        pm = DataPresentation.PlotManager(nodeStats.stats.stats,
-                graphs, options, geoDbCity, geoDbCountry)
+        print("Proc %s: Generating plots..." % pid)
+        pm = DataPresentation.PlotManager(nodeStats.stats.stats, graphs)
         pm.ipMap = ipMap
-        pm.generatePlot()
+        pm.generatePlot(pcap_file, options.figDir, options.ipAttr)
 
         Utils.sysUsage("Plots generated")
 
-    print("\nDestintaion analysis finished.")
+if __name__ == "__main__":
+    main()
 

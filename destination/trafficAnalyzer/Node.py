@@ -18,14 +18,13 @@ class Nodes(object):
         return False
 
 class NodeStats(object):
-    def __init__(self, nodeId, baseTS = 0, devices = None, options = None):
+    def __init__(self, nodeId, baseTS = 0, devices = None):
         self.nodeId = nodeId
         self.desc = ""
         self.baseTS = baseTS
         self.devices = devices
         self.stats = Stats.Stats(self)
-        self.options = options
-        self.extractLayers(self.options)
+        self.extractLayers()
 
     def processPacket(self, packet):
         #print(dir(packet.eth))
@@ -57,7 +56,7 @@ class NodeStats(object):
             stats = self.stats.getStats(layer.layer_name, Constants.Direction.SND)
             stats.processLayer(packet, layer)
 
-    def extractLayers(self, options):
+    def extractLayers(self):
         layers = defaultdict(int)
         layers['eth'] += 1
     
@@ -106,3 +105,4 @@ class NodeId(object):
 
     def __str__(self):
         return "mac: {} ip: {} history ip: {}".format(self.mac, self.ip, self.ipHistory)
+
