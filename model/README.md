@@ -3,17 +3,20 @@
 Content Analysis generates a machine learning model that can predict the device activity given the network traffic of that device.
 
 ## Setup
+
 Python 3.6 is required to run this code. Please follow the steps under General Setup in [Getting_Started.md](../Getting_Started.md#general-setup) before continuing.
 
 Install the dependencies: `pip install -r requirements.txt`
 
 ## Information about the Model
+
 For an explanation about the machine learning models: [model_details.md](model_details.md)
 
 Definition of the device activity: tag name 
 [gdoc exp](https://docs.google.com/document/d/1_s6brtocKG0zpdTVNWOxZZdJ1WSkJKKw9gbZh_32WJU/edit)
 
 ## Usage
+
 The Jupyter Notebook [model_sample.ipynb](model_sample.ipynb) is a step-by-step guide that shows how to train a model using network traffic and how to use the model to classify (predict) a new traffic observed.
 
 `model.sh` is an equivalent to the Jupyter Notebook, which can run directly in the terminal.
@@ -23,6 +26,7 @@ Usage: `./model.sh [OPTION]...`
 Example: `./model.sh -i exp_list.txt -rn -v yi-camera -l knn -p yi_camera_sample.pcap -o results.csv`
 
 ### Input
+
 There are several options which one can choose from. The default options have been set to run with the provided dataset.
 
 #### Options:

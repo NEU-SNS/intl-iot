@@ -108,7 +108,7 @@ check_args_files() {
     then
         errors=true
         echo -e "${red}${path}: Error: The script \"$raw2int\" cannot be found." >&2
-        echo -e "${red}  Please make sure it is in the same directory as \"${path}\".$end" >&2
+        echo -e "${red}    Please make sure it is in the same directory as \"${path}\".$end" >&2
     else
         if ! [ -r $raw2int ]
         then
@@ -130,7 +130,7 @@ check_args_files() {
         then
             errors=true
             echo -e "${red}${path}: Error: The script \"$f\" cannot be found." >&2
-            echo -e "${red}  Please make sure it is in the same directory as \"${path}\".$end" >&2
+            echo -e "${red}    Please make sure it is in the same directory as \"${path}\".$end" >&2
         elif ! [ -r $f ]
         then
             errors=true
@@ -156,7 +156,7 @@ check_args_files() {
         *)
             errors=true
             echo -e "${red}${path}: Error: \"${model_name}\" is an invalid model name.$end" >&2
-            echo -e "${red}  Note: dbscan and spectral cannot be used for prediction.$end" >&2
+            echo -e "${red}    Note: dbscan and spectral cannot be used for prediction.$end" >&2
             ;;
     esac
 
@@ -190,7 +190,7 @@ check_ret_code() {
     if [ $ret_code -ne 0 ]
     then
         echo -e "${red}${path}: Error: Something went wrong with \"$(basename $file)\". Exit status $ret_code.$end" >&2
-        echo -e "${red}  Please make sure you have properly set up your environment.$end" >&2
+        echo -e "${red}    Please make sure you have properly set up your environment.$end" >&2
         exit $ret_code
     fi
 }
@@ -214,7 +214,7 @@ run_pipeline() {
 }
 
 
-#### Begin Model Pipeline ###
+### Begin Model Pipeline ###
 
 begin=`date '+%A %d %B %Y %T %Z %s'`
 
