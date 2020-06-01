@@ -45,12 +45,8 @@ geoDbCountry = geoDir + "/GeoLite2-Country.mmdb"
 
 files = [consts, dataPres, dev, dnsTrack, init, ip, node, stat, util]
 
-
 RED = "\033[31;1m"
 END = "\033[0m"
-
-print("Running %s..." % path)
-
 
 #Check that traffic analyzer package has all files and correct permissions
 errors = False
@@ -162,14 +158,14 @@ def print_usage(isError):
 
 def find_invalid_goptions(args):
     #Prints an error message if there are options other than -p, -l, or -r among the graph options
-    done = False
+    errors = False
     for arg in args:
         if arg[0] == '-':
             if arg not in ("-g", "-p", "-l", "-r"):
-                done = True
+                errors = True
                 print("%s%s: Error: The \"%s\" option is after the \"-g\" option.%s"
                         % (RED, path, arg, END), file=sys.stderr)
-    if done:
+    if errors:
         print("%s    Only the \"-p\", \"-l\", and \"-r\" options may follow a \"-g\" option.\n"
                 "    All other options must come before the first \"-g\" option.%s"
                 % (RED, END), file=sys.stderr)
@@ -178,6 +174,14 @@ def find_invalid_goptions(args):
 
 def main():
     global options, graphs, devices
+
+    for arg in sys.argv:
+        if arg in ["-h", "--help"]:
+            print_usage(0)
+
+    print("Performing destination analysis...")
+    print("Running %s..." % path)
+
     #Check that GeoLite2 databases exist and have proper permissions
     errors = False
     if not os.path.isdir(geoDir):
@@ -256,8 +260,6 @@ def main():
         if arg == '-g' and not start: #Main Options
             args.pop(0)
             options = parser.parse_args(args)
-            if options.help:
-                print_usage(0)
             start = True
             args = []
             args.append(arg)
@@ -268,7 +270,7 @@ def main():
                 print("***PiePlot currently does not function properly. Please choose a different"
                         " plot.\n   Currently available plots: StackPlot, LinePlot, ScatterPlot,"
                         " BarPlot, BarHPlot", file=sys.stderr)
-                exit(0)
+                exit(1)
             graphs.append(gopts)
             args = []
             args.append(arg)
@@ -278,8 +280,6 @@ def main():
     if not start: #Main Options (when no graph options exist)
         args.pop(0)
         options = parser.parse_args(args)
-        if options.help:
-            print_usage(0)
     else: #Last set of graph options
         find_invalid_goptions(args)
         gopts = graphParser.parse_args(args)
@@ -287,7 +287,7 @@ def main():
             print("***PiePlot currently does not function properly. Please choose a different"
                     " plot.\n   Currently available plots: StackPlot, LinePlot, ScatterPlot,"
                     " BarPlot, BarHPlot", file=sys.stderr)
-            exit(0)
+            exit(1)
         graphs.append(gopts)
 
     if options.macAddr != "":
@@ -295,66 +295,66 @@ def main():
 
 
     #Error checking command line args
-    done = False
+    errors = False
     if options.inputDir == "":
+        errors = True 
         print("%s%s: Error: Pcap input directory (-i) required.%s"
                 % (RED, path, END), file=sys.stderr)
-        done = True
     elif not os.path.isdir(options.inputDir):
+        errors = True
         print("%s%s: Error: The input pcap directory \"%s\" is not a directory.%s"
                 % (RED, path, options.inputDir, END), file=sys.stderr)
-        done = True
     else:
         if not os.access(options.inputDir, os.R_OK):
+            errors = True
             print("%s%s: Error: The \"%s\" directory does not have read permission.%s"
                   % (RED, path, options.inputDir, END), file=sys.stderr)
-            done = True
         if not os.access(options.inputDir, os.X_OK):
+            errors = True
             print("%s%s: Error: The \"%s\" directory does not have execute permission.%s"
                   % (RED, path, options.inputDir, END), file=sys.stderr)
-            done = True
 
     #if options.hostsFile == "":
     #    options.hostsFile = options.inputFile
 
     if not options.outputFile.endswith(".csv"):
+        errors = True
         print("%s%s: Error: The output file should be a CSV (.csv) file.\n    Received \"%s\".%s"
                 % (RED, path, options.outputFile, END), file=sys.stderr)
-        done = True
 
     noMACDevice = False
     validDeviceList = True
     if options.macAddr == "" and options.device == "":
+        errors = True
         print("%s%s: Error: Either the MAC address (-m) or device (-d) must be specified.%s"
                 % (RED, path, END), file=sys.stderr)
-        done = True
         noMACDevice = True
     else:
         if options.macAddr == "":
             if not options.deviceList.endswith(".txt"):
+                errors = True
                 print("%s%s: Error: Device list must be a text (.txt) file.\n    Received \"%s\"%s"
                         % (RED, path, options.deviceList, END), file=sys.stderr)
-                done = True
                 validDeviceList = False
             elif not os.path.isfile(options.deviceList):
+                errors = True
                 print("%s%s: Error: Device list file \"%s\" does not exist.%s"
                         % (RED, path, options.deviceList, END), file=sys.stderr)
-                done = True
                 validDeviceList = False
         else:
             options.macAddr = options.macAddr.lower()
             if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", options.macAddr):
+                errors = True
                 print("%s%s: Error: Invalid MAC address \"%s\". Valid format: xx:xx:xx:xx:xx:xx%s"
                         % (RED, path, options.macAddr, END), file=sys.stderr)
-                done = True
 
     if validDeviceList:
         devices = Device.Devices(options.deviceList)
         if options.macAddr == "" and not noMACDevice:
             if not devices.deviceInList(options.device):
+                errors = True
                 print("%s%s: Error: The device \"%s\" does not exist in the device list \"%s\".%s"
                         % (RED, path, options.device, options.deviceList, END), file=sys.stderr)
-                done = True
             else:
                 options.macAddr = devices.getDeviceMac(options.device)
 
@@ -369,9 +369,9 @@ def main():
         bad_proc = True
 
     if bad_proc:
+        errors = True
         print("%s%s: Error: The number of processes must be a positive integer. Received \"%s\".%s"
               % (RED, path, options.numProc, END), file=sys.stderr)
-        done = True
 
 
     plotTypes = ["StackPlot", "LinePlot", "ScatterPlot", "BarPlot", "PiePlot", "BarHPlot"]
@@ -379,29 +379,29 @@ def main():
     ipAttrTypes = ["", "addrPacketSize", "addrPacketNum"]
     for graph in graphs:
         if graph.plot not in plotTypes:
+            errors = True
             print("%s%s: Error: \"%s\" is not a valid plot type.\n"
                     "    Must be either \"StackPlot\", \"LinePlot\", \"ScatterPlot\","
                     " \"BarPlot\", \"PiePlot\", or \"BarHPlot\".%s"
                     % (RED, path, graph.plot, END), file=sys.stderr)
-            done = True
         else:
             if graph.protocol == "":
+                errors = True
                 print("%s%s: Error: A protocol (-p) must be specified for \"%s\".%s"
                         % (RED, path, graph.plot, END), file=sys.stderr)
-                done = True
             if graph.ipLoc not in ipLocTypes:
+                errors = True
                 print("%s%s: Error: Invalid IP locator method \"%s\" for \"%s\".\n"
                         "    Must be either \"Country\", \"Host\", \"TSharkHost\","
                         " \"RipeCountry\", or \"IP\".%s"
                         % (RED, path, graph.ipLoc, graph.plot, END), file=sys.stderr)
-                done = True
             if graph.ipAttr not in ipAttrTypes:
+                errors = True
                 print("%s%s: Error: Invalid IP Attribute \"%s\" for \"%s\".\n"
                         "    Must be either \"addrPacketSize\" or \"addrPacketNum\".%s"
                         % (RED, path, graph.ipAttr, graph.plot, END), file=sys.stderr)
-                done = True
 
-    if done:
+    if errors:
         print_usage(1)
     #End error checking
 

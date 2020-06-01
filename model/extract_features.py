@@ -34,6 +34,7 @@ num_per_exp=10
 
 RED = "\033[31;1m"
 END = "\033[0m"
+path = sys.argv[0]
 
 usage_stm = """
 Usage: python3 {prog_name} in_imd_dir out_features_dir
@@ -47,7 +48,7 @@ Arguments:
   out_features_dir: path to the directory to write the analyzed CSV files;
                       directory will be generated if it does not already exist
 
-For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
+For more information, see the README or model_details.md.""".format(prog_name=path)
 
 #isError is either 0 or 1
 def print_usage(isError):
@@ -59,25 +60,26 @@ def print_usage(isError):
 
 def main():
     global root_exp, root_feature
-    path = sys.argv[0]
-    print("Running %s..." % path)
 
     for arg in sys.argv:
         if arg in ("-h", "--help"):
             print_usage(0)
+
+    print("Running %s..." % path)
 
     if len(sys.argv) != 3:
         print("%s%s: Error: 2 arguments required. %d arguments found.%s"
                 % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
         print_usage(1)
 
-    if not os.path.isdir(sys.argv[1]):
-        print("%s%s: Error: Input directory %s does not exist!%s"
-                % (RED, path, sys.argv[1], END), file=sys.stderr)
-        print_usage(1)
-
     root_exp = sys.argv[1]
     root_feature = sys.argv[2]
+
+    if not os.path.isdir(root_exp):
+        print("%s%s: Error: Input directory %s does not exist!%s"
+                % (RED, path, root_exp, END), file=sys.stderr)
+        print_usage(1)
+
     print("Input files located in: %s" % root_exp)
     print("Output files placed in: %s" % root_feature)
     prepare_features()

@@ -28,6 +28,7 @@ save_extracted_features = False
 
 RED = "\033[31;1m"
 END = "\033[0m"
+path = sys.argv[0]
 
 usage_stm = """
 Usage: python3 {prog_name} pcap_path model_dir device_name model_name result_path
@@ -47,7 +48,7 @@ Arguments:
 
 Note: The dbscan and spectral algorithms cannot be used for prediction.
 
-For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
+For more information, see the README or model_details.md.""".format(prog_name=path)
 
 #isError is either 0 or 1
 def print_usage(isError):
@@ -59,12 +60,12 @@ def print_usage(isError):
 
 def main():
     global dir_models
-    path = sys.argv[0]
-    print("Running %s..." % path)
 
     for arg in sys.argv:
         if arg in ("-h", "--help"):
             print_usage(0)
+
+    print("Running %s..." % path)
 
     if len(sys.argv) != 6:
         print("%s%s: Error: 5 arguments required. %d arguments found.%s"

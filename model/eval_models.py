@@ -56,6 +56,7 @@ model_list = []
 
 RED = "\033[31;1m"
 END = "\033[0m"
+path = sys.argv[0]
 
 usage_stm = """
 Usage: python3 {prog_name} -f IN_FEATURES_DIR -m OUT_MODELS_DIR [-dknrs]
@@ -81,7 +82,7 @@ Optional arguments:
 
 Note: If no model is chosen, all of the models will be produced.
 
-For more information, see the README or model_details.md.""".format(prog_name=sys.argv[0])
+For more information, see the README or model_details.md.""".format(prog_name=path)
 
 #isError is either 0 or 1
 def print_usage(isError):
@@ -95,8 +96,6 @@ def print_usage(isError):
 def main():
     # test()
     global root_feature, root_model, root_output, dir_tsne_plots, model_list
-    path = sys.argv[0]
-    print("Running %s..." % path)
 
     # Parse Arguments
     parser = argparse.ArgumentParser(usage=usage_stm, add_help=False)
@@ -112,6 +111,8 @@ def main():
 
     if args.help:
         print_usage(0)
+
+    print("Running %s..." % path)
 
     # Error checking command line args
     done = False
