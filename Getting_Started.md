@@ -49,7 +49,7 @@ Very basic usage: `python3 analyze.py -i IN_DIR -m MAC_ADDR [-g PLOTS -p PROTOS]
 
 For input, very basic usage requires the path to a directory with pcap files (`-i`) and a MAC address of the device from which the data in the input pcap files were generated from (`-m`).
 
-Optionally, the `-g` option produces a graph(s), and the `-p` option determine the protocols to analyze (more info below). Each graph required two protcols to be specified, which are separated by a period (`.`). The first protocol is the send protocol, and the second protocol is the receive protocol.
+Optionally, the `-g` option produces a graph(s), and the `-p` option determine the protocols to analyze (more info below). Each graph required two protocols to be specified, which are separated by a period (`.`). The first protocol is the send protocol, and the second protocol is the receive protocol.
 
 For output, a CSV called `results.csv` is generated. Information about the contents of this file can be found in the [Destination README](./destination/README.md).
 

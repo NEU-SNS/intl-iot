@@ -47,7 +47,7 @@ There are required arguments as well as several optional arguments which one can
 
 `-o OUT_CSV` - The path to the output CSV file. If it exists, results will be appended, else, it will be created. Default is `results.csv`.
 
-`-n NUM_PROC` - The number of processes to use to analyze the pcap files. Default is 1.
+`-n NUM_PROC` - The number of processes to use to analyze the pcap files. Default is `1`.
 
 `-h` - Print the usage statement and exit.
 
@@ -61,19 +61,20 @@ To produce more than one graph, use commas to separate arguments. See the [notes
 
 `-l IPLOCS` - A comma-delimited list of methods to map an IP address to a host or country. Choose from `Country`, `Host`, `IP`, `RipeCountry`, or `TSharkHost`. `RipeCountry` currently does not function properly. **This option affects only pie plots and horizontal bar plots.**
 
-`-r IPATTS` - A comma-delimtied list of IP packet attributes to display. Choose from either `addrPacketSize` or `addrPacketNum`. **This option affects only pie plots and horizontal barplots.**
+`-r IPATTS` - A comma-delimited list of IP packet attributes to display. Choose from either `addrPacketSize` or `addrPacketNum`. **This option affects only pie plots and horizontal bar plots.**
 
 #### Notes
 
 Required options:
-- The `-i` option is required. This is the path to a directory containing input pcap file to be processed.
+- The `-i` option is required. This is the path to a directory containing input pcap files to be processed.
 - The MAC address of the device whose traffic is recorded in the pcap files is also needed. Inputting the MAC address can be done in two ways:
-  - Input the MAC address using the `-m` option.
-  - Input the device name in the `-d` option, and input the file name to a list of devices using the `-c` option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`
+  - Input the MAC address directly using the `-m` option.
+  - Input the device name in the `-d` option, and input the file name to a list of devices using the `-c` option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`. An example file is `aux/devices_uk.txt`.
 
 All other options are optional.
 
 More information about the graph options:
+
 An argument for the `-g` option can be one of the following:
 
 - `StackPlot` - Stack Plot
@@ -83,9 +84,9 @@ An argument for the `-g` option can be one of the following:
 - `PiePlot` - Pie Plot
 - `BarHPlot` - Horizontal Bar Plot
 
-An argument for the `-p` option consists of send protocol and receive protocol delimited by a period (`.`). It is in the format `[snd].[rcv]`, which stands for "sent" and "received" traffic of the given protocol.
+An argument for the `-p` option consists of send protocol and receive protocol delimited by a period (`.`). It is in the format `[snd].[rcv]`, which stands the for "sent" and "received" traffic of the given protocol.
 
-All traffic is included in the "eth" (ethernet) protocol, so to analyze all sent and received traffic, the option should be `eth,eth`. To include only icmp traffic, one can use `icmp,icmp`.
+All traffic is included in the "eth" (Ethernet) protocol, so to analyze all sent and received traffic, the option should be `eth,eth`. To include only ICMP traffic, one can use `icmp,icmp`.
 
 An argument for the `-l` option specifies how an IP address should be mapped to a host or a country. This option affects only pie plots and horizontal bar plots. Supported options are:
 
@@ -93,7 +94,7 @@ An argument for the `-l` option specifies how an IP address should be mapped to 
 - `Host` - Uses reverse DNS lookup on an IP address. It also tries to extract only the domain name from the reverse lookup so all Google, Amazon AWS, etc. domains are grouped.
 - `IP` - Uses the IP address directly.
 - `RipeCountry` - Uses Ripe.net API to find the location of an IP address. If it fails, the Geo IP Database is used.
-- `TSharkHost` - Uses the list produced by the `tshark` utility, which extracts hosts from the `.pcap` file. If a domain is not found, reverse DNS lookup is used.
+- `TSharkHost` - Uses the list produced by TShark, which extracts hosts from the pcap files. If a domain is not found, reverse DNS lookup is used.
 
 An argument for the `-r` option specifies the attribute to plot in a graph. This option affects only pie plots or horizontal bar plots. Supported options are:
 
@@ -102,8 +103,8 @@ An argument for the `-r` option specifies the attribute to plot in a graph. This
 
 Example: If the graph options specified are `-g LinePlot,BarHPlot -p eth.eth,eth.eth -l ,Country -r ,addrPcktNum`, then the following plots are produced:
 
-- A line plot with ethernet as both the send and receive protocols.
-- A horizontal bar plot with ethernet as both the send and receive protocols using the country method to map IP addresses to hosts and plotting number of packets.
+- A line plot with Ethernet as both the send and receive protocols.
+- A horizontal bar plot with Ethernet as both the send and receive protocols using the country method to map IP addresses to hosts and plotting number of packets.
 
 ### Output
 
@@ -111,7 +112,7 @@ When `analyze.py` is run, a CSV containing an analysis of the input pcap files i
 
 The CSV file has 16 headings. Their meanings are listed below:
 
-- `ts` - The timestamp of when the first packet of the input file was generated.
+- `ts` - The Unix timestamp of when the first packet of the input file was generated.
 - `device` - The input into the `-d` option.
 - `ip` - The IP address of the packets being analyzed.
 - `host` - The domain name of the IP address. If not found, the IP address is used.
@@ -134,6 +135,6 @@ If graphs are produced, they will be stored in the `figures/` directory by defau
 
 This script is still being developed. Therefore, there are still a few issues. The information above conveys how the script should function ideally, but it may not completely do so. Known issues are listed below:
 
-- Pie plot does not function properly. Please do not use PiePlot as an argument for the `-g` option.
-- RipeCountry does not function properly because of a missing SQL Database. Please do not use RipeCountry for the `-l` option.
+- Pie plots currently cannot be generated. Please do not use `PiePlot` as an argument for the `-g` option.
+- The ripe country method does not function properly because of a missing SQL database. Please do not use `RipeCountry` for the `-l` option.
 
