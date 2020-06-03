@@ -7,9 +7,9 @@ Updated by Derek Ng in 2020
 CSVFILE: ip_src,ip_dst,srcport,dstport,tp_proto,data_proto,data_type,data_len,entropy,reason
 """
 import json
+import math
 import os
 import sys
-import math
 import traceback
 
 
@@ -92,6 +92,7 @@ Note:
 
 For more information, see the README.""".format(prog_name=path)
 
+
 #isError is either 0 or 1
 def print_usage(isError):
     if isError == 0:
@@ -99,6 +100,7 @@ def print_usage(isError):
     else:
         print(usage_stm, file=sys.stderr)
     exit(isError)
+
 
 def main():
     for arg in sys.argv:
@@ -109,7 +111,7 @@ def main():
 
     if len(sys.argv) != 3:
         print("%s%s: Error: 2 arguments expected. %s arguments found.%s"
-                % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
+              % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
         print_usage(0)
 
     jsonfile = sys.argv[1]
@@ -119,15 +121,15 @@ def main():
     if not jsonfile.endswith(".json"):
         done = True
         print("%s%s: Error: The file \"%s\" is not a JSON file.%s"
-                % (RED, path, jsonfile, END), file=sys.stderr)
+              % (RED, path, jsonfile, END), file=sys.stderr)
     elif not os.path.isfile(jsonfile):
         done = True
         print("%s%s: Error: The file \"%s\" does not exist.%s"
-                % (RED, path, jsonfile, END), file=sys.stderr)
+              % (RED, path, jsonfile, END), file=sys.stderr)
     if not csvfile.endswith(".csv"):
         done = True
         print("%s%s: Error: The file \"%s\" is not a CSV file.%s"
-                % (RED, path, csvfile, END), file=sys.stderr)
+              % (RED, path, csvfile, END), file=sys.stderr)
 
     if done:
         print_usage(1)
@@ -148,7 +150,9 @@ def main():
                 if row is not None:
                     n_rows += 1
                     cf.write('%s\n' % ','.join(map(str, row)))
+
             print("Results written to \"%s\" (%s packets)." % (csvfile, n_rows))
+
 
 def split_layers(infile):
     """
@@ -156,8 +160,6 @@ def split_layers(infile):
     """
     for_pd = []
     num_orginal_pkt = 0
-    num_udp_tcp_only = 0
-    num_omit_filter = 0
     with open(infile) as sf:
         for line in sf.readlines():
             line = line.strip()
@@ -175,6 +177,7 @@ def split_layers(infile):
                 """
                 for_pd.append(res)
     return for_pd
+
 
 def get_layers(ek_obj):
     layers = set()
@@ -197,14 +200,14 @@ def process_pkt(line, infile):
         """
         KEEP ONLY TCP & UDP FRAMES 
         """
-        if tp_layer == LAYER_TP_OTHER: return
-
-        selected = False
-        data_proto = 'data'
+        if tp_layer == LAYER_TP_OTHER:
+            return
 
         result = compute_pkt(ek_obj, tp_layer, list_detected_layers)
         # print(result)
-        if result is None: return
+        if result is None:
+            return
+
         return result
     except:
         print("Err At file: %s" % (infile))
@@ -331,7 +334,7 @@ def compute_pkt(ek_obj, tp_layer, list_detected_layers):
         reason += layers_obj['frame']['frame_frame_protocols'][25:]
         data_type = DT_MEDIA_RTP
     elif data_proto == 'gquic':
-        reason +='gquic'
+        reason += 'gquic'
         data_type = DT_ENCRYPTED
 
     """
@@ -340,7 +343,7 @@ def compute_pkt(ek_obj, tp_layer, list_detected_layers):
     if data_type == DT_UNKNOWN:
         magic_type = check_magic_number(data_stream)
         if magic_type is not None:
-            reason +='magic (%s)' % magic_type
+            reason += 'magic (%s)' % magic_type
             if magic_type in list_compressed:
                 """
                 is a compressed type
@@ -393,6 +396,7 @@ def determine_transport_layer(layers):
     else:
         return LAYER_TP_OTHER
 
+
 def check_magic_number(data_stream):
     for magic in dict_magic_numbers:
         if magic in data_stream[:80]:
@@ -402,6 +406,7 @@ def check_magic_number(data_stream):
             mt = dict_magic_numbers[magic]
             print('  Found magic: %s (%s)' % (magic, mt))
             return dict_magic_numbers[magic]
+
 
 def entropy_after_decode(data_stream):
     try:
@@ -415,6 +420,7 @@ def entropy_after_decode(data_stream):
     except:
         traceback.print_exc()
         return my_byte_entropy(data_stream)
+
 
 def my_byte_entropy(data_stream):
     """Return the Byte Entropy of the sample data.
@@ -455,6 +461,7 @@ def my_byte_entropy(data_stream):
         ent += freq * math.log(freq, 256)
     ent = -ent
     return ent
+
 
 if __name__ == '__main__':
     main()

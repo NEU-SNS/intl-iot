@@ -7,10 +7,11 @@ class Device(object):
     def normaliseMac(mac):
         return ":".join([n.zfill(2) for n in mac.split(":")])
 
+
 class Devices(object):
-    def __init__(self, fileName):
+    def __init__(self, file_name):
         self.devices = {}
-        self.fileName = fileName
+        self.fileName = file_name
         self.loadDevices()
 
     def loadDevices(self):
@@ -21,17 +22,19 @@ class Devices(object):
             mac, name = line.strip().split()
             mac = Device.normaliseMac(mac)
             self.devices[mac] = Device(mac, name)
-      
+
+
     def getDeviceName(self, mac):
         if mac in self.devices:
             return self.devices[mac].name
         return None
 
-    def deviceInList(self, deviceName):
+    def deviceInList(self, device_name):
         for device in self.devices.values():
-            if deviceName == device.name:
+            if device_name == device.name:
                 return True
         return False
  
-    def getDeviceMac(self, deviceName):
-        return [mac for mac, device in self.devices.items() if device.name == deviceName][0]
+    def getDeviceMac(self, device_name):
+        return [mac for mac, device in self.devices.items() if device.name == device_name][0]
+

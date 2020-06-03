@@ -53,10 +53,14 @@ There are several options which one can choose from. The default options have be
 
 `-v DEV_NAME` - The name of the device that generated the data in `IN_PCAP`. This argument should match the name of a `device_name` directory (see the `exp_list.txt` section in [model_details.md](model_details.md#exp_listtxt)). Default is `yi-camera`.
 
+`-l MODEL_NAME` - The name of the model to be used to predict the device activity of `IN_PCAP`. Choose from `kmeans`, `knn`, or `rf`. The DBSCAN and spectral clustering algorithms cannot be used for prediction. The model must also have been generated to be used. Default is `rf`.
+
 `-o OUT_CSV` - The path to a CSV file to write the results of predicting the device activity in `IN_PCAP`. Default is `results.csv`.
 
+`-h` - Display the usage statement and exit.
+
 #### Notes
-- If no algorithm is specified, all five algorithms will be used to generate models.
+- If no algorithms are specified, all five algorithms will be used to generate models.
 - All directories and `OUT_CSV` will be generated if they currently do not exist.
 
 ### Output
@@ -67,7 +71,7 @@ The CSV file has six headings. Their meanings are listed below:
 - `ts` - The Unix timestamp at which data was first recorded to `IN_PCAP`.
 - `ts_end` - The Unix timestamp at which recording was stopped to `IN_PCAP`.
 - `ts_delta` - The time difference between each frame capture.
-- `num_pkt` - The number of packets in `IN_PCAP`
+- `num_pkt` - The number of packets in `IN_PCAP`.
 - `state` - The predicted state that the device was in when `IN_PCAP` was created.
 - `device` - The input into the `-v` option.
 

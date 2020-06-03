@@ -33,8 +33,9 @@ Options:
   -v DEV_NAME   name of the device that generated the data in IN_PATH
                      (Default = yi-camera)
   -l MODEL_NAME name of the model to be used to predict the device activity in
-                     IN_PATH; choose from kmeans, knn, or rf; dbscan and spectral
-                     cannot be used for prediction (Default = rf)
+                     IN_PATH; choose from kmeans, knn, or rf; DBSCAN and spectral
+                     clustering algorithms cannot be used for prediction; specified
+                     model must exist to be used for prediction (Default = rf)
   -o OUT_CSV    path to a CSV file to write the results of predicting the
                      device activity of IN_PATH (Default = results.csv)
   -h            display this usage statement and exit

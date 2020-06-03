@@ -11,14 +11,15 @@ Usage: `python3 analyze.py -i IN_DIR {-m MAC_ADDR | -d DEV} [OPTION]... [-g PLOT
 
 Example: `python3 analyze.py -i iot-data/uk/echodot/voice/ -d echodot -o output.csv -n 4`
 
-Example: `python3 analyze.py -i iot-data/us/appletv/local_menu/ -m 7c:61:66:10:46:18 -f figoutput/ -g StackPlot -p eth-snd,eth-rcv -g LinePlot -p eth-snd,eth-rcv`
+Example: `python3 analyze.py -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -f figout/ -g StackPlot,LinePlot -p eth.eth,eth.eth`
 
-Example: `python3 analyze.py -i iot-data/uk/echodot/voice/ -d echodot -o output.csv -g LinePlot -p eth-snd,eth-rcv -g BarPlot -p eth-snd,eth-rcv`
+Example: `python3 analyze.py -i iot-data/uk/echodot/ -d echodot -g BarPlot,BarHPlot -p eth.eth,eth.eth -l ,Country -r ,addrPcktNum`
 
 ### Input
+
 There are required arguments as well as several optional arguments which one can choose from. Below is a summary of all the options:
 
-#### Options:
+#### Options
 
 `-i IN_DIR` - The path to the directory containing input pcap file to be analyzed. **Option required.**
 
@@ -50,16 +51,20 @@ There are required arguments as well as several optional arguments which one can
 
 `-h` - Print the usage statement and exit.
 
-#### Graph options:
-`-g PLOT` - The type of graph to plot. Choose from `StackPlot`, `LinePlot`, `ScatterPlot`, `BarPlot`, `PiePlot`, or `BarHPlot`. `PiePlot` currently does not function properly. Specify multiple of this option to plot multiple graphs.
+#### Graph options
 
-`-p PROTO` - The protocols that should be analyzed. Protocols should be specified in the format `[send_protocol],[receive_protocol]`. **This option must be specified after each `-g` option.**
+To produce more than one graph, use commas to separate arguments. See the [notes](#Notes) section for examples.
 
-`-l IPLOC` - The method to map an IP address to a host or country. Choose from `Country`, `Host`, `IP`, `RipeCountry`, or `TSharkHost`. `RipeCountry` currently does not function properly.
+`-g PLOTS` - A comma-delimited list of the types of graphs to plot. Choose from `StackPlot`, `LinePlot`, `ScatterPlot`, `BarPlot`, `PiePlot`, or `BarHPlot`. `PiePlot` currently does not function properly.
 
-`-r IPATT` - IP packet to display. Choose from either `addrPacketSize` or `addrPacketNum`.
+`-p PROTOS` - A comma-delimited list of protocols that should be analyzed. **For each plot specified in `PLOTS`,** there should be two protocols specified in the following period-delimited format: `[send_protocol].[receive_protocol]`.
+
+`-l IPLOCS` - A comma-delimited list of methods to map an IP address to a host or country. Choose from `Country`, `Host`, `IP`, `RipeCountry`, or `TSharkHost`. `RipeCountry` currently does not function properly. **This option affects only pie plots and horizontal bar plots.**
+
+`-r IPATTS` - A comma-delimtied list of IP packet attributes to display. Choose from either `addrPacketSize` or `addrPacketNum`. **This option affects only pie plots and horizontal barplots.**
 
 #### Notes
+
 Required options:
 - The `-i` option is required. This is the path to a directory containing input pcap file to be processed.
 - The MAC address of the device whose traffic is recorded in the pcap files is also needed. Inputting the MAC address can be done in two ways:
@@ -68,10 +73,8 @@ Required options:
 
 All other options are optional.
 
-If graphs are to be outputted, each graph should be specified using its own `-g` option. Any `-p`, `-l`, or `-r` option specified will be applied to the closest preceding `-g` option. Note that the `-p` option is required for each `-g` option used. Also note that all graph options must be specified at the end of the command; non-graph options cannot come after a `-g` option. 
-
 More information about the graph options:
-`GRAPH_TYPE`, `-g`, can be one of the following:
+An argument for the `-g` option can be one of the following:
 
 - `StackPlot` - Stack Plot
 - `LinePlot` - Line Plot
@@ -80,20 +83,30 @@ More information about the graph options:
 - `PiePlot` - Pie Plot
 - `BarHPlot` - Horizontal Bar Plot
 
-`PROTOCOL_TYPE`, `-p`, is a comma separated list of protocols that should be analyzed. It is in the format `[snd|rcv]`, which stands for "sent" and "received" traffic of the given protocol.
+An argument for the `-p` option consists of send protocol and receive protocol delimited by a period (`.`). It is in the format `[snd].[rcv]`, which stands for "sent" and "received" traffic of the given protocol.
 
-All traffic is included in the "eth" (ethernet) protocol, so to analyze all sent and received traffic, the option should be `eth-snd,eth-rcv`. To include only icmp traffic, one can use
-`icmp-snd,icmp-rcv`.
+All traffic is included in the "eth" (ethernet) protocol, so to analyze all sent and received traffic, the option should be `eth,eth`. To include only icmp traffic, one can use `icmp,icmp`.
 
-`LOCATION_RETRIEVAL_METHOD`, `-l`, specifies how an IP address should be mapped to a host or a country. Supported options are: `Country`, `Host`, `IP`, `RipeCountry`, or `TSharkHost`. The `-l` option is only needed when a pie plot is specified for the `-g` option.
+An argument for the `-l` option specifies how an IP address should be mapped to a host or a country. This option affects only pie plots and horizontal bar plots. Supported options are:
 
 - `Country` - Uses the Geo IP Database to map an IP address into a country.
-- `Host` - Uses reverse DNS lookup on an IP address. It also tries to extract only the domain name from the reverese lookup so all Google, Amazon AWS, etc. domains are grouped.
+- `Host` - Uses reverse DNS lookup on an IP address. It also tries to extract only the domain name from the reverse lookup so all Google, Amazon AWS, etc. domains are grouped.
 - `IP` - Uses the IP address directly.
 - `RipeCountry` - Uses Ripe.net API to find the location of an IP address. If it fails, the Geo IP Database is used.
 - `TSharkHost` - Uses the list produced by the `tshark` utility, which extracts hosts from the `.pcap` file. If a domain is not found, reverse DNS lookup is used.
 
+An argument for the `-r` option specifies the attribute to plot in a graph. This option affects only pie plots or horizontal bar plots. Supported options are:
+
+- `addrPcktSize` - Plot the packet sizes in a pcap file.
+- `addrPcktNum` - Plot the number of packets in a pcap file.
+
+Example: If the graph options specified are `-g LinePlot,BarHPlot -p eth.eth,eth.eth -l ,Country -r ,addrPcktNum`, then the following plots are produced:
+
+- A line plot with ethernet as both the send and receive protocols.
+- A horizontal bar plot with ethernet as both the send and receive protocols using the country method to map IP addresses to hosts and plotting number of packets.
+
 ### Output
+
 When `analyze.py` is run, a CSV containing an analysis of the input pcap files is produced. By default, the CSV is stored in `results.csv`. However, the output file name can be changed by using the `-o` option. If the requested output file name already exists, the program will append the new data instead of overwriting.
 
 The CSV file has 16 headings. Their meanings are listed below:
@@ -115,12 +128,12 @@ The CSV file has 16 headings. Their meanings are listed below:
 - `input_file` - The input pcap file name from which the data was generated from.
 - `organization` - The organization that the IP address belongs to. If not found, "N/A" is displayed.
 
-If graphs are produced, they will be stored in the `figures/` directory by default. The output directory can be changed by using the `-f` option. Each time `analyze.py` is run, exactly one PNG file is produced if one or more `-g` options are specified. The PNG file contains all the graphs specified. The name of the PNG file is a santized version of the argument given into the `-i` option followed by the type(s) of graphs produced.
+If graphs are produced, they will be stored in the `figures/` directory by default. The output directory can be changed by using the `-f` option. Each time `analyze.py` is run, exactly one PNG file is produced if one or more `-g` options are specified. The PNG file contains all the graphs specified. The name of the PNG file is a sanitized version of the pcap file followed by the type(s) of graphs produced.
 
 ## Current Issues
+
 This script is still being developed. Therefore, there are still a few issues. The information above conveys how the script should function ideally, but it may not completely do so. Known issues are listed below:
 
 - Pie plot does not function properly. Please do not use PiePlot as an argument for the `-g` option.
 - RipeCountry does not function properly because of a missing SQL Database. Please do not use RipeCountry for the `-l` option.
-- `icmp-snd,icmp-rcv` may not work for the `-p` option.
 

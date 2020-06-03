@@ -1,38 +1,33 @@
-import warnings
-import matplotlib
-
-matplotlib.use("Agg")
-import os
-import sys
 import argparse
+import os
 import pickle
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.cluster import DBSCAN
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import LabelBinarizer
-from sklearn.metrics.cluster import homogeneity_score
-from sklearn.metrics.cluster import completeness_score
-from sklearn.metrics.cluster import v_measure_score
-from sklearn.metrics.cluster import adjusted_rand_score
-from sklearn.metrics import silhouette_score
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+import sys
 import time
 import warnings
-from sklearn.cluster import SpectralClustering
-from sklearn.metrics import f1_score
+from multiprocessing import Pool
 
 import matplotlib
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.cluster import DBSCAN
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import SpectralClustering
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.manifold import TSNE
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import silhouette_score
+from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.metrics.cluster import completeness_score
+from sklearn.metrics.cluster import homogeneity_score
+from sklearn.metrics.cluster import v_measure_score
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import StandardScaler
 
 matplotlib.use("Agg")
-from matplotlib import pyplot as plt
-from multiprocessing import Pool
 
 """
 Output: root_model/{alg}/*.models
@@ -84,6 +79,7 @@ Note: If no model is chosen, all of the models will be produced.
 
 For more information, see the README or model_details.md.""".format(prog_name=path)
 
+
 #isError is either 0 or 1
 def print_usage(isError):
     if isError == 0:
@@ -92,6 +88,7 @@ def print_usage(isError):
         print(usage_stm, file=sys.stderr)
     
     exit(isError)
+
 
 def main():
     # test()
@@ -122,7 +119,7 @@ def main():
     elif not os.path.isdir(args.root_feature):
         done = True
         print("%s%s: Error: The features directory \"%s\" is not a directory.%s"
-                % (RED, path, args.root_features, END), file=sys.stderr)
+              % (RED, path, args.root_features, END), file=sys.stderr)
     else:
         root_feature = args.root_feature
 
@@ -189,7 +186,8 @@ def train_models():
     t0 = time.time()
     list_results = p.map(eid_wrapper, lparas)
     for ret in list_results:
-        if ret is None or len(ret) == 0: continue
+        if ret is None or len(ret) == 0:
+            continue
         for res in ret:
             tmp_outfile = res[0]
             tmp_res = res[1:]
@@ -198,7 +196,7 @@ def train_models():
                 print('Agg saved to %s' % tmp_outfile)
     t1 = time.time()
     print('Time to train all models for %s devices using %s threads: %.2f'
-            % (len(lparas),num_pools, (t1 - t0)))
+          % (len(lparas), num_pools, (t1 - t0)))
     # p.map(target=eval_individual_device, args=(lfiles, ldnames))
 
 
@@ -228,7 +226,6 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
         """
         model_dir = '%s/%s' % (root_model, model_alg)
         model_file = '%s/%s%s.model' % (model_dir, dname, model_alg)
-        label_file = '%s/%s.label.txt' % (model_dir, dname)
         if not os.path.exists(model_file) and os.path.exists(train_data_file):
             # check .model
             # check if training data set is available
@@ -392,7 +389,8 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
         # TODO: due to the multi-thread, needs to change the settings
         with open(single_outfile, 'a+') as off:
             off.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n'
-                    % (dname, _acc_score, _homogeneity, _complete,                                                          _vmeasure, _ari, _noise, _silhouette))
+                       % (dname, _acc_score, _homogeneity, _complete,
+                          _vmeasure, _ari, _noise, _silhouette))
             # y_test_bin_1d, y_predicted_1d
             off.write('%s\n' % ','.join(map(str, y_test_bin_1d)))
             off.write('%s\n' % ','.join(map(str, y_predicted_1d)))
@@ -402,7 +400,7 @@ def eval_individual_device(train_data_file, dname, specified_models=None):
         """
         Print to Terminal 
         """
-        print('    model -> %s' % (model_file))
+        print('    model -> %s' % model_file)
         print('    labels -> %s' % label_file)
         print('\t' + '\n\t'.join(unique_labels) + '\n')
         if model_alg not in ['rf']:
@@ -431,10 +429,10 @@ def tsne_plot(X, y, figfile, pp=30):
     plot_data = pd.DataFrame(X_2d, columns=['x', 'y'])
     plot_data['cluster_label'] = y
     # print(plot_data.head())
-    fig = plt.figure()
+    plt.figure()
     ax = plt.subplot(111)
     for yi, g in plot_data.groupby('cluster_label'):
-        g2 = g.drop('cluster_label', axis=1)
+        g.drop('cluster_label', axis=1)
         if yi == -1:
             plt.scatter(g.x, g.y, label='cluster_%s' % yi, marker='*')
         else:
