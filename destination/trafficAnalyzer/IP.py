@@ -1,12 +1,17 @@
+import datetime
+import json
+import operator
+import os
+import socket
+import subprocess
+import urllib.request
+
 import geoip2.database
-import socket, datetime
-import urllib.request, json
 import mysql.connector
-import sys, operator, subprocess
+import pandas as pd
 import tldextract
 import whois
-import pandas as pd
-import os
+
 
 class IPResolver(object):
     def __init__(self, ipMapping, geoDbCity, geoDbCountry):
@@ -24,9 +29,9 @@ class IPResolver(object):
       
     def getHostByAddr(self, ip):
         try: 
-            hostName, aliasList, ipAddrList = socket.gethostbyaddr(ip)
-            hostName = self.extractDomain(hostName)
-            return hostName, aliasList, ipAddrList
+            host_name, alias_list, ip_addr_list = socket.gethostbyaddr(ip)
+            host_name = self.extractDomain(host_name)
+            return host_name, alias_list, ip_addr_list
         except:
             return "N/A", [], []
 
@@ -39,6 +44,7 @@ class IPResolver(object):
             return w.domain_name.lower()
     
         if w.emails != "" and w.emails is not None:
+            ext = ""
             if isinstance(w.emails, (list,)):
                 for email in reversed(w.emails):
                     ext = tldextract.extract(email)
@@ -51,73 +57,78 @@ class IPResolver(object):
 
         return "N/A"
 
-    def extractDomain(self, hostName):
-        if hostName == "N/A":
-            return hostName
-        elif self.isIPAddr(hostName):
-            return hostName
+    def extractDomain(self, host_name):
+        if host_name == "N/A":
+            return host_name
+        elif self.isIPAddr(host_name):
+            return host_name
 
-        ext = tldextract.extract(hostName)
+        ext = tldextract.extract(host_name)
         return "{}.{}".format(ext.domain, ext.suffix)
 
-    def splitIPBy(self, ipDict, method, data = {}):
-        for ip, val in ipDict.items():
+    def splitIPBy(self, ip_dict, method, data=None):
+        if data is None:
+            data = {}
+
+        for ip, val in ip_dict.items():
             if not self.isIPAddr(ip):
                 continue
       
-            dataPoint = self.getDataPoint(ip, method)
+            data_point = self.getDataPoint(ip, method)
 
-            if dataPoint in data:
-                data[dataPoint] += val
+            if data_point in data:
+                data[data_point] += val
             else:
-                data[dataPoint] = val
+                data[data_point] = val
 
         return data
 
-    def getDataPoint(self, ip, method, extractDomain = True, defaultToIP = True):
-        if method == "IP":
-            dataPoint = ip
+    def getDataPoint(self, ip, method, extract_domain=True, default_to_ip=True):
+        method = method.lower()
+        if method == "ip":
+            data_point = ip
         elif self.isLocalAddr(ip):
-            dataPoint = ip
+            data_point = ip
         elif self.isMulticastAddr(ip):
-            dataPoint = ip
-        elif method == "Country":
-            dataPoint, _, _ = self.getCountryAndCity(ip)
-            #print (ip, dataPoint)
-        elif method == "Host":
-            dataPoint, _, _ = self.getHostByAddr(ip)
-        elif method == "TSharkHost":
-            dataPoint = self.ipMap.getHost(ip)[0]
-            if dataPoint == "N/A":
-                dataPoint, _, _ = self.getHostByAddr(ip)
-                if dataPoint == "N/A" or self.isIPAddr(dataPoint):
-                    dataPoint = self.getWhois(ip)
-        elif method == "RipeCountry":
-            dataPoint = self.ripeProbe.getIPLocation(ip, 'countryCodeAlpha2')
-            if dataPoint == "N/A":
-                dataPoint, _, _ = self.getCountryAndCity(ip)
-        elif method == "CountryMapping":
-            dataPoint = self.ipMap.getCountry(ip)
-            if dataPoint == "N/A":
-                dataPoint, _, _ = self.getCountryAndCity(ip)
-        elif method == "OrgMapping":
-            dataPoint = self.ipMap.getOrg(ip)
+            data_point = ip
+        elif method == "country":
+            data_point, _, _ = self.getCountryAndCity(ip)
+            #print (ip, data_point)
+        elif method == "host":
+            data_point, _, _ = self.getHostByAddr(ip)
+        elif method == "tsharkhost":
+            data_point = self.ipMap.getHost(ip)[0]
+            if data_point == "N/A":
+                data_point, _, _ = self.getHostByAddr(ip)
+                if data_point == "N/A" or self.isIPAddr(data_point):
+                    data_point = self.getWhois(ip)
+        elif method == "ripecountry":
+            data_point = self.ripeProbe.getIPLocation(ip, 'countryCodeAlpha2')
+            if data_point == "N/A":
+                data_point, _, _ = self.getCountryAndCity(ip)
+        elif method == "countrymapping":
+            data_point = self.ipMap.getCountry(ip)
+            if data_point == "N/A":
+                data_point, _, _ = self.getCountryAndCity(ip)
+        elif method == "orgmapping":
+            data_point = self.ipMap.getOrg(ip)
         else:
+            print("No method %s" % method)
             raise UndefinedMethodError('Undefined Method Error')
     
-        if method.endswith("Host") and extractDomain:
-            dataPoint = self.extractDomain(dataPoint)
+        if method.endswith("host") and extract_domain:
+            data_point = self.extractDomain(data_point)
 
-        if not method.endswith("Mapping") and dataPoint == "N/A" and defaultToIP:
-            dataPoint = ip
+        if not method.endswith("mapping") and data_point == "N/A" and default_to_ip:
+            data_point = ip
 
-        return dataPoint
+        return data_point
 
     def isIPAddr(self, ip):
         try: 
             socket.inet_aton(ip)
             return True
-        except:
+        except OSError:
             return False
 
     def isLocalAddr(self, ip):
@@ -130,6 +141,7 @@ class IPResolver(object):
             return True
         return False
 
+
 class RipeProbe(object):
     def __init__(self):
         self.cnx = mysql.connector.connect(user='meddle', password='meddle',
@@ -137,7 +149,7 @@ class RipeProbe(object):
         self.cursor = self.cnx.cursor(dictionary=True)
         self.url = "https://openipmap.ripe.net/api/v1/locate/{}/"
 
-    def getIPLocation(self, ip, locType):
+    def getIPLocation(self, ip, loc_type):
         loc = self.loadIP(ip, 1)
         if len(loc) == 0:
             loc = self.loadIP(ip, 0)
@@ -151,7 +163,7 @@ class RipeProbe(object):
                     self.chooseLocationForIP(ip)
 
         else:
-            return loc[0][locType]
+            return loc[0][loc_type]
 
         return 'N/A'
 
@@ -165,7 +177,7 @@ class RipeProbe(object):
     
         try: 
             rows = self.cursor.fetchall()
-        except mysql.connector.errors.InterfaceError as err:
+        except mysql.connector.errors.InterfaceError:
             return []
 
         return rows
@@ -188,7 +200,7 @@ class RipeProbe(object):
             loc['probedAt'] = timestamp
             loc['locationId'] = loc.pop('id')
             try:
-                if loc['stateName'] == None:
+                if loc['stateName'] is None:
                     loc['stateName'] = ""
             except KeyError:
                 loc['stateNme'] = ""
@@ -202,7 +214,7 @@ class RipeProbe(object):
         query = "INSERT INTO IPLocation ({}) VALUES({})".format(fields, placeholders)
         try: 
             self.cursor.execute(query, list(loc.values()))
-        except  (mysql.connector.errors.ProgrammingError, mysql.connector.errors.IntegrityError) as err:
+        except(mysql.connector.errors.ProgrammingError, mysql.connector.errors.IntegrityError) as err:
             print(self.cursor.statement)
             print("Error: {}".format(err))
             print(query, list(loc.values()))
@@ -210,7 +222,6 @@ class RipeProbe(object):
 
     def chooseLocationForIP(self, ip):
         query = "SELECT * FROM IPLocation WHERE ip = %s ORDER BY score DESC"
-        chosenId = 0
     
         try: 
             self.cursor.execute(query, [str(ip)])
@@ -220,7 +231,7 @@ class RipeProbe(object):
     
         try:
             rows = self.cursor.fetchall()
-        except mysql.connector.errors.InterfaceError as err:
+        except mysql.connector.errors.InterfaceError:
             # if there are no locations, return
             return
     
@@ -257,6 +268,7 @@ class RipeProbe(object):
         self.cursor.execute(query, [locationId])
         self.cnx.commit()
 
+
 class IPMapping(object):
     def __init__(self):
         self.host = {}
@@ -266,7 +278,7 @@ class IPMapping(object):
     #However, the A Record is in the details of running "tshark -r [pcap_file]"
     #This method searches for the line containing the host name and checks
     #accuracy by making sure that the ip is also in that line
-    def getARecord(self, details, host, ip):
+    def get_a_record(self, details, host, ip):
         for line in details.splitlines(): #loop through lines in detailed tshark output
             if host in line and ip in line:
                 words = line.split()
@@ -276,32 +288,33 @@ class IPMapping(object):
 
         return None
 
-    def extractFromFile(self, fileName):
+    def extractFromFile(self, file_name):
         details = ""
-        if fileName.endswith(".pcap"):
-            p1 = subprocess.Popen(["tshark", "-r", fileName, "-q", "-z", "hosts"], stdout=subprocess.PIPE)
+        if file_name.endswith(".pcap"):
+            p1 = subprocess.Popen(["tshark", "-r", file_name, "-q", "-z", "hosts"],
+                                  stdout=subprocess.PIPE)
             p2 = subprocess.Popen(["awk", "NF && $1!~/^#/"], stdin=p1.stdout, stdout=subprocess.PIPE,
-                universal_newlines=True)
+                                  universal_newlines=True)
             hosts = str(p2.communicate()[0][0:-1]).split("\n")
 
             #run "tshark -r [pcap_file]" - gets the details which contain A Record
-            details = str(os.popen("tshark -r %s" % fileName).read())
+            details = str(os.popen("tshark -r %s" % file_name).read())
         else:
-            with open(fileName) as f:
+            with open(file_name) as f:
                 hosts = f.readlines()
 
         for hostLine in hosts:
             try:
                 ip, host = hostLine.split("\t")
                 #Get the A Record host name
-                if fileName.endswith(".pcap"):
-                    tmpHost = self.getARecord(details, host, ip)
-                    if tmpHost != None:
-                        host = tmpHost
+                if file_name.endswith(".pcap"):
+                    tmp_host = self.get_a_record(details, host, ip)
+                    if tmp_host is not None:
+                        host = tmp_host
 
                 self.addHostIP(host.strip(), ip)
-            except:
-                print("Error: No hosts found in %s" % fileName)
+            except ValueError:
+                print("Error: No hosts found in %s" % file_name)
 
     def addHostIP(self, host, ip):
         if ip not in self.ip:
@@ -322,11 +335,11 @@ class IPMapping(object):
             return self.host[host]
         return ["N/A"]
 
-    def loadOrgMapping(self, fileName):
-        self.orgMapping = pd.read_csv(fileName)
+    def loadOrgMapping(self, file_name):
+        self.orgMapping = pd.read_csv(file_name)
 
-    def loadCountryMapping(self, fileName):
-        self.countryMapping = pd.read_csv(fileName)
+    def loadCountryMapping(self, file_name):
+        self.countryMapping = pd.read_csv(file_name)
 
     def getOrg(self, ip, column = "org"):
         org = self.orgMapping[self.orgMapping['ip'] == ip]
@@ -344,6 +357,7 @@ class IPMapping(object):
             return "N/A"
 
         return country.iloc[0]['country']
+
 
 class UndefinedMethodError(Exception):
     pass

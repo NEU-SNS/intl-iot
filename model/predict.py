@@ -1,3 +1,16 @@
+import ntpath
+import os
+import pickle
+import sys
+import time
+import warnings
+
+import numpy as np
+import pandas as pd
+from scipy.stats import kurtosis
+from scipy.stats import skew
+from statsmodels import robust
+
 import sys
 import pandas as pd
 import numpy as np
@@ -13,7 +26,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 dir_online_features = 'online_features'
-columns_intermediate = ['frame_no','ts', 'ts_delta', 'protocols', 'frame_len', 'eth_src',
+columns_intermediate = ['frame_no', 'ts', 'ts_delta', 'protocols', 'frame_len', 'eth_src',
                         'eth_dst', 'ip_src', 'ip_dst', 'tcp_srcport', 'tcp_dstport',
                         'http_host', 'sni', 'udp_srcport', 'udp_dstport']
 
@@ -23,12 +36,13 @@ columns_state_features = ["meanBytes", "minBytes", "maxBytes", "medAbsDev", "ske
                           "medianTBP", "kurtosisTBP", "skewTBP", "network_to", "network_from",
                           "network_both", "network_to_external", "network_local",
                           "anonymous_source_destination", "device", "state"]
-columns_detect_sequence = ['ts', 'ts_end','ts_delta', 'num_pkt', 'state']
+columns_detect_sequence = ['ts', 'ts_end', 'ts_delta', 'num_pkt', 'state']
 save_extracted_features = False
 
 RED = "\033[31;1m"
 END = "\033[0m"
 path = sys.argv[0]
+dir_models = ""
 
 usage_stm = """
 Usage: python3 {prog_name} pcap_path model_dir device_name model_name result_path
@@ -50,6 +64,7 @@ Note: The dbscan and spectral algorithms cannot be used for prediction.
 
 For more information, see the README or model_details.md.""".format(prog_name=path)
 
+
 #isError is either 0 or 1
 def print_usage(isError):
     if isError == 0:
@@ -57,6 +72,7 @@ def print_usage(isError):
     else:
         print(usage_stm, file=sys.stderr)
     exit(isError)
+
 
 def main():
     global dir_models
@@ -69,7 +85,7 @@ def main():
 
     if len(sys.argv) != 6:
         print("%s%s: Error: 5 arguments required. %d arguments found.%s"
-                % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
+              % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
         print_usage(1)
 
     pcap_path = sys.argv[1]
@@ -82,38 +98,38 @@ def main():
     errors = False
     if not pcap_path.endswith('.pcap'):
         print("%s%s: Error: \"%s\" is not a pcap (.pcap) file.%s"
-                % (RED, path, pcap_path, END), file=sys.stderr)
+              % (RED, path, pcap_path, END), file=sys.stderr)
         errors = True
     elif not os.path.isfile(pcap_path):
         print("%s%s: Error: The pcap file \"%s\" does not exist.%s"
-                % (RED, path, pcap_path, END), file=sys.stderr)
+              % (RED, path, pcap_path, END), file=sys.stderr)
         errors = True
 
     if not file_result.endswith('.csv'):
         print("%s%s: Error: Output file \"%s\" is not a CSV (.csv) file.%s"
-                % (RED, path, file_result, END), file=sys.stderr)
+              % (RED, path, file_result, END), file=sys.stderr)
         errors = True
     
     if not model_name in ("kmeans", "knn", "rf"):
         print("%s%s: Error: \"%s\" is not a valid model name. Choose from: kmeans, knn, or rf.%s"
-                % (RED, path, model_name, END), file=sys.stderr)
+              % (RED, path, model_name, END), file=sys.stderr)
         errors = True
     elif not os.path.isdir(dir_models):
         print("%s%s: Error: The model directory \"%s\" is not a directory.%s"
-                % (RED, path, dir_models, END), file=sys.stderr)
+              % (RED, path, dir_models, END), file=sys.stderr)
         errors = True
     else:
         file_model = '%s/%s%s.model' % (dir_models, device, model_name)
         file_labels = '%s/%s.label.txt' % (dir_models, device)
         if not os.path.isfile(file_model):
             print("%s%s: Error: The model file %s cannot be found.\n"
-                    "    Please regenerate file, check directory name, or check device name.%s"
-                    % (RED, path, file_model, END), file=sys.stderr)
+                  "    Please regenerate file, check directory name, or check device name.%s"
+                  % (RED, path, file_model, END), file=sys.stderr)
             errors = True
         if not os.path.isfile(file_labels):
             print("%s%s: Error: The label file %s cannot be found.\n"
-                    "    Please regenerate file, check directory name, or check device name.%s"
-                    % (RED, path, file_labels, END), file=sys.stderr)
+                  "    Please regenerate file, check directory name, or check device name.%s"
+                  % (RED, path, file_labels, END), file=sys.stderr)
             errors = True
 
     if errors:
@@ -158,6 +174,7 @@ def predict(device, file_intermediate):
     print(res_detect)
     return res_detect
 
+
 def detect_states(intermediate_file, trained_model, labels, dname=None):
     group_size = 100
     warnings.simplefilter("ignore", category=DeprecationWarning)
@@ -173,7 +190,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     col_data_points = ['ts', 'ts_end','ts_delta', 'num_pkt']
     c.extend(col_data_points)
     pd_obj_all = pd.read_csv(intermediate_file, names=col_names, sep='\t')
-    pd_obj = pd_obj_all.loc[:, ['ts', 'ts_delta', 'frame_len','ip_src','ip_dst']]
+    pd_obj = pd_obj_all.loc[:, ['ts', 'ts_delta', 'frame_len', 'ip_src', 'ip_dst']]
     if pd_obj is None or len(pd_obj) < 1: #Nothing in decoded input pcap file
         return
     num_total = len(pd_obj_all)
@@ -285,6 +302,7 @@ def detect_states(intermediate_file, trained_model, labels, dname=None):
     if len(list_states) > 0:
         return pd.DataFrame(list_states, columns=columns_detect_sequence)
 
+
 def compute_tbp_features(pd_obj, deviceName, state):
     meanBytes = pd_obj.frame_len.mean()
     minBytes = pd_obj.frame_len.min()
@@ -316,7 +334,7 @@ def compute_tbp_features(pd_obj, deviceName, state):
             network_both += 1
         elif j == "192.168.10.204,129.10.227.248":
             network_local += 1
-        elif (j != "192.168.10.204" and i != "192.168.10.204"):
+        elif j != "192.168.10.204" and i != "192.168.10.204":
             network_to_external += 1
         else:
             anonymous_source_destination += 1
@@ -331,8 +349,10 @@ def compute_tbp_features(pd_obj, deviceName, state):
          deviceName, state]
     return d
 
+
 def load_model(dname):
     global dir_models
+    file_model = ""
     for file in os.listdir(dir_models):
         if file.endswith(".model"):
             print(file)
@@ -347,6 +367,7 @@ def load_model(dname):
         print('No model for %s' % dname)
         return None, None
 
+
 def load_list(fn, sym='#'):
     l = []
     if not os.path.exists(fn):
@@ -360,8 +381,10 @@ def load_list(fn, sym='#'):
             l.append(line)
     return l
 
+
 def print_list(l, prefix=''):
     print('%s %s' % (prefix, ','.join(l)))
+
 
 if __name__ == '__main__':
     main()

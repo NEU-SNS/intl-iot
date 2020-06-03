@@ -31,7 +31,6 @@ For more information, see the README."
     exit $exit_stat
 }
 
-
 check_args_files() {
     for arg in "$@"
     do

@@ -1,8 +1,9 @@
 import os
 import sys
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from scipy.stats import kurtosis
 from scipy.stats import skew
 from statsmodels import robust
@@ -50,6 +51,7 @@ Arguments:
 
 For more information, see the README or model_details.md.""".format(prog_name=path)
 
+
 #isError is either 0 or 1
 def print_usage(isError):
     if isError == 0:
@@ -57,6 +59,7 @@ def print_usage(isError):
     else:
         print(usage_stm, file=sys.stderr)
     exit(isError)
+
 
 def main():
     global root_exp, root_feature
@@ -69,7 +72,7 @@ def main():
 
     if len(sys.argv) != 3:
         print("%s%s: Error: 2 arguments required. %d arguments found.%s"
-                % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
+              % (RED, path, (len(sys.argv) - 1), END), file=sys.stderr)
         print_usage(1)
 
     root_exp = sys.argv[1]
@@ -77,12 +80,13 @@ def main():
 
     if not os.path.isdir(root_exp):
         print("%s%s: Error: Input directory %s does not exist!%s"
-                % (RED, path, root_exp, END), file=sys.stderr)
+              % (RED, path, root_exp, END), file=sys.stderr)
         print_usage(1)
 
     print("Input files located in: %s" % root_exp)
     print("Output files placed in: %s" % root_feature)
     prepare_features()
+
 
 def prepare_features():
     global root_exp, root_feature
@@ -100,11 +104,11 @@ def prepare_features():
             print('Features for %s prepared already in %s' % (dir_device, training_file))
             continue
         full_dir_device = root_exp + '/' + dir_device
-        if os.path.isdir(full_dir_device) == False:
+        if not os.path.isdir(full_dir_device):
             continue
         for dir_exp in os.listdir(full_dir_device):
             full_dir_exp = full_dir_device + '/' + dir_exp
-            if os.path.isdir(full_dir_exp) == False:
+            if not os.path.isdir(full_dir_exp):
                 continue
             for intermediate_file in os.listdir(full_dir_exp):
                 full_intermediate_file = full_dir_exp + '/' + intermediate_file
@@ -118,7 +122,7 @@ def prepare_features():
                     state = dir_exp
                     device = dir_device
                 feature_file = (root_feature + '/caches/' + device + '_' + state
-                        + '_' + intermediate_file[:-4] + '.csv') #Output cache files
+                                + '_' + intermediate_file[:-4] + '.csv') #Output cache files
                 paras = (full_intermediate_file, feature_file, group_size, device, state)
                 #Dict contains devices that do not have an output file
                 if device not in dict_intermediates:
@@ -136,16 +140,15 @@ def prepare_features():
 
     for device in dict_intermediates:
         training_file = root_feature + '/' + device + '.csv'
-        list_data= []
+        list_data = []
         list_paras = dict_intermediates[device]
         for paras in list_paras:
             full_intermediate_file = paras[0]
             feature_file = paras[1]
-            group_size = paras[2]
             device = paras[3]
             state = paras[4]
             tmp_data = load_features_per_exp(
-                    full_intermediate_file, feature_file, group_size, device, state)
+                    full_intermediate_file, feature_file, device, state)
             if tmp_data is None or len(tmp_data) == 0:
                 continue
             list_data.append(tmp_data)
@@ -155,14 +158,15 @@ def prepare_features():
             pd_device.to_csv(training_file, index=False) #Put in CSV file
     print('%s: Features prepared!' % time.time())
 
-def load_features_per_exp(intermediate_file, feature_file, group_size, deviceName, state):
+
+def load_features_per_exp(intermediate_file, feature_file, device_name, state):
     #Load data from cache
     if os.path.exists(feature_file):
         print('    Load from %s' % feature_file)
         return pd.read_csv(feature_file)
 
     #Attempt to extract data from input files if not in previously-generated cache files
-    feature_data = extract_features(intermediate_file, feature_file, group_size, deviceName, state)
+    feature_data = extract_features(intermediate_file, feature_file, device_name, state)
     if feature_data is None or len(feature_data) == 0: #Can't extract from input files
         print('No data or features from %s' % intermediate_file)
         return
@@ -170,8 +174,9 @@ def load_features_per_exp(intermediate_file, feature_file, group_size, deviceNam
         feature_data.to_csv(feature_file, index=False)
     return feature_data
 
+
 #Create CSV cache file
-def extract_features(intermediate_file, feature_file, group_size, deviceName, state):
+def extract_features(intermediate_file, feature_file, device_name, state):
     if not os.path.exists(intermediate_file):
         print('%s not exist' % intermediate_file)
         return
@@ -190,12 +195,13 @@ def extract_features(intermediate_file, feature_file, group_size, deviceName, st
         random_indices = list(np.random.choice(num_total, num_pkts))
         random_indices=sorted(random_indices)
         pd_obj = pd_obj_all.loc[random_indices, :]
-        d = compute_tbp_features(pd_obj, deviceName, state)
+        d = compute_tbp_features(pd_obj, device_name, state)
         feature_data = feature_data.append(pd.DataFrame(data=[d], columns=c))
     return feature_data
 
+
 #Use Pandas to perform stat analysis on raw data
-def compute_tbp_features(pd_obj, deviceName, state):
+def compute_tbp_features(pd_obj, device_name, state):
     startTime = pd_obj.ts.iloc[0]
     endTime = pd_obj.ts.iloc[pd_obj.shape[0] - 1]
     meanBytes = pd_obj.frame_len.mean()
@@ -219,32 +225,30 @@ def compute_tbp_features(pd_obj, deviceName, state):
     network_to_external = 0 # Network not going to just 192.168.10.248.
     anonymous_source_destination = 0
 
-
-    for i,j in zip(pd_obj.ip_src,pd_obj.ip_dst):
+    for i, j in zip(pd_obj.ip_src, pd_obj.ip_dst):
         if i == "192.168.10.204":
-            network_from+=1
+            network_from += 1
         elif j == "192.168.10.204":
-            network_to+=1
+            network_to += 1
         elif i == "192.168.10.248,192.168.10.204":
-            network_both+=1
+            network_both += 1
         elif j == "192.168.10.204,129.10.227.248":
-            network_local+=1
-        elif (j!="192.168.10.204" and i!="192.168.10.204"):
-            network_to_external+=1
+            network_local += 1
+        elif j != "192.168.10.204" and i != "192.168.10.204":
+            network_to_external += 1
         else:
-            anonymous_source_destination+=1
-
-
+            anonymous_source_destination += 1
 
     d = [startTime, endTime, meanBytes, minBytes, maxBytes,
          medAbsDev, skewL, kurtL, percentiles[0],
          percentiles[1], percentiles[2], percentiles[3],
          percentiles[4], percentiles[5], percentiles[6],
          percentiles[7], percentiles[8], spanG, meanTBP, varTBP,
-         medTBP, kurtT, skewT,network_to,network_from,
-         network_both,network_to_external,network_local,anonymous_source_destination,
-         deviceName, state]
+         medTBP, kurtT, skewT, network_to, network_from,
+         network_both, network_to_external, network_local, anonymous_source_destination,
+         device_name, state]
     return d
+
 
 if __name__ == '__main__':
     main()

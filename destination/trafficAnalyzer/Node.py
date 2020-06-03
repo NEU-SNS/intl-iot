@@ -1,6 +1,8 @@
+from collections import defaultdict
+
 from . import Stats
 from . import Constants
-from collections import defaultdict
+
 
 class Nodes(object):
     def __init__(self):
@@ -17,11 +19,12 @@ class Nodes(object):
             return True
         return False
 
+
 class NodeStats(object):
-    def __init__(self, nodeId, baseTS = 0, devices = None):
-        self.nodeId = nodeId
+    def __init__(self, node_id, base_ts=0, devices=None):
+        self.nodeId = node_id
         self.desc = ""
-        self.baseTS = baseTS
+        self.baseTS = base_ts
         self.devices = devices
         self.stats = Stats.Stats(self)
         self.extractLayers()
@@ -29,31 +32,19 @@ class NodeStats(object):
     def processPacket(self, packet):
         #print(dir(packet.eth))
         if packet.eth.src == self.nodeId.mac:
-            self.sndPacket(packet)
+            self.proc_pckt(packet, Constants.Direction.RCV, Constants.Direction.SND)
         else:
-            self.rcvPacket(packet)
+            self.proc_pckt(packet, Constants.Direction.SND, Constants.Direction.RCV)
 
-    def rcvPacket(self, packet):
+    def proc_pckt(self, packet, dir1, dir2):
         addr = NodeId()
-        addr.extractFromPacket(packet, Constants.Direction.SND, self.devices)
+        addr.extractFromPacket(packet, dir1, self.devices)
         #print("rcv", addr)
         packet.addr = addr
         for layer in packet.layers:
             if layer.layer_name not in self.layersToProcess:
                 continue
-            stats = self.stats.getStats(layer.layer_name, Constants.Direction.RCV)
-            stats.processLayer(packet, layer)
-
-    def sndPacket(self, packet):
-        addr = NodeId()
-        addr.extractFromPacket(packet, Constants.Direction.RCV, self.devices)
-        packet.addr = addr
-        #print("snd", addr)
-        for layer in packet.layers:
-            if layer.layer_name not in self.layersToProcess:
-                continue
-
-            stats = self.stats.getStats(layer.layer_name, Constants.Direction.SND)
+            stats = self.stats.getStats(layer.layer_name, dir2)
             stats.processLayer(packet, layer)
 
     def extractLayers(self):
@@ -62,8 +53,9 @@ class NodeStats(object):
     
         self.layersToProcess = ['eth'] #dict.keys(layers)
 
+
 class NodeId(object):
-    def __init__(self, mac = None, ip = None, time = 0):
+    def __init__(self, mac=None, ip=None, time=0):
         self.mac = mac
         self.ip = ip
         self.deviceName = None
@@ -71,7 +63,7 @@ class NodeId(object):
         if ip is not None:
             self.ipHistory.append((ip, time))
     
-    def setMacIp(self, mac, ip, time = 0):
+    def setMacIp(self, mac, ip, time=0):
         self.mac = mac
         self.ip = ip
         self.ipHistory.append((ip, time))

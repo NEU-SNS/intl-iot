@@ -1,6 +1,6 @@
 import numpy as np
-import sys
 from . import Constants
+
 
 class Stats(object):
     def __init__(self, node):
@@ -19,17 +19,18 @@ class Stats(object):
         for key, val in sorted(self.stats.items()):
             print("{}: {}".format(key, val))
 
+
 class StatsData(object):
-    def __init__(self, node, layerName, direction):
+    def __init__(self, node, layer_name, direction):
         self.node = node
-        self.layerName = layerName
+        self.layerName = layer_name
         self.direction = direction
         self.packets = []
         self.packetTS = []
         self.packetDiff = []
         self.packetSize = []
-        self.addrPacketNum = {}
-        self.addrPacketSize = {}
+        self.addrpcktnum = {}
+        self.addrpcktsize = {}
         self.srcPort = {}
         self.destPort = {}
         self.flags = []
@@ -57,8 +58,8 @@ class StatsData(object):
         else:
             self.packetSize.append(packet.length)
     
-        self.increaseCount(self.addrPacketNum, packet.addr.getAddr())
-        self.increaseCount(self.addrPacketSize, packet.addr.getAddr(), packet.length)
+        self.increaseCount(self.addrpcktnum, packet.addr.getAddr())
+        self.increaseCount(self.addrpcktsize, packet.addr.getAddr(), packet.length)
     
         if self.layerHasPort(layer):
             self.increaseCount(self.srcPort, layer.srcport)
@@ -71,7 +72,7 @@ class StatsData(object):
 
     def getOtherAddr(self, layer):
         try:
-            if self.direction == Direction.SND:
+            if self.direction == Constants.Direction.SND:
                 return layer.dst
             return layer.src
         except AttributeError:
@@ -83,7 +84,7 @@ class StatsData(object):
         return False
 
     def getDataLength(self, layer):
-        intersect = list(set(layer.field_names) & set(['len', 'data_len', 'length']))
+        intersect = list(set(layer.field_names) & {'len', 'data_len', 'length'})
         if len(intersect) == 1:
             return int(getattr(layer, intersect[0]), 0)
         elif len(intersect) > 1:
@@ -95,40 +96,41 @@ class StatsData(object):
     def __str__(self):
         return "addr: {}".format(self.srcPort)
 
+
 class StatsMerge(object):
     def __init__(self):
         pass
 
-    def mergeStats(self, x1, x2, y1List, y2):
-        x = []
-        yDictList = []
-        yList = [[] for i in range(len(y1List)+1)]
+    def mergeStats(self, x1, x2, y1_list, y2):
+        y_dict_list = []
+        y_list = [[] for i in range(len(y1_list)+1)]
 
-        for y1 in y1List:
-            yDictList.append(dict(zip(x1, y1)))
+        for y1 in y1_list:
+            y_dict_list.append(dict(zip(x1, y1)))
 
-        yDictList.append(dict(zip(x2, y2)))
+        y_dict_list.append(dict(zip(x2, y2)))
         x = sorted(x1 + x2)
     
         for xVal in x:
-            for i, yDict in enumerate(yDictList):
+            for i, yDict in enumerate(y_dict_list):
                 if xVal in yDict:
-                    yList[i].append(yDict[xVal])
+                    y_list[i].append(yDict[xVal])
                 else:
-                    yList[i].append(0)
+                    y_list[i].append(0)
 
-        return x, yList
+        return x, y_list
 
-    def cumSumList(self, yList):
-        yListNew = []
+    def cumSumList(self, y_list):
+        y_listNew = []
     
-        for y in yList:
-            yListNew.append(np.cumsum(y))
+        for y in y_list:
+            y_listNew.append(np.cumsum(y))
     
-        return yListNew
+        return y_listNew
 
-    def mergeValues(self, valList, mergeVal):
-        return np.add.reduceat(valList, np.arange(0, len(valList), mergeVal))
+    def mergeValues(self, val_list, merge_val):
+        return np.add.reduceat(val_list, np.arange(0, len(val_list), merge_val))
 
-    def reduceValues(self, valList, reduceVal):
-        return valList[::reduceVal]
+    def reduceValues(self, val_list, reduce_val):
+        return val_list[::reduce_val]
+
