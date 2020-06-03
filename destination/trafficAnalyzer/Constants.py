@@ -27,10 +27,10 @@ BEG = RED + PATH
 USAGE_STM = """
 Usage: python3 {prog_name} -i IN_DIR {{-m MAC_ADDR | -d DEV}} [OPTION]... [-g PLOTS -p PROTOS [GRAPH_OPTION]...]
 
-Performs destination analysis on serveral pcap files. Produces a CSV file detailing
+Performs destination analysis on several pcap files. Produces a CSV file detailing
 the organizations that traffic in the pcap files have been to and the number of
 packets that were sent and received from those organizations. The program also
-can produce plotss of this data.
+can produce plots of this data.
 
 Example: python3 {prog_name} -i iot-data/us/appletv/local_menu/ -m 7c:61:66:10:46:18 -g StackPlot,LinePlot -p eth.eth,eth.eth
 
@@ -79,9 +79,9 @@ Notes:
      determine which graph that argument will affect. For example, in the
      command: "-g LinePlot,StackPlot -p eth.eth,eth.eth -l ,IP
      -r addrPcktNum", two plots are produced:
-     1) a line plot displaying the number of packets with ethernet as both the
+     1) a line plot displaying the number of packets with Ethernet as both the
           send and receive protocols
-     2) a horizontal bar plot with ethernet as both the send and receive
+     2) a horizontal bar plot with Ethernet as both the send and receive
           protocols using the IP method to map the IP addresses to a host
  - Only pie plots and horizontal bar plots are affected by the -l and -r options
  - All plots specified will be placed in one PNG file named:
