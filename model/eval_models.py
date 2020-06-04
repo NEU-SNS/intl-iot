@@ -81,12 +81,8 @@ For more information, see the README or model_details.md.""".format(prog_name=pa
 
 
 #isError is either 0 or 1
-def print_usage(isError):
-    if isError == 0:
-        print(usage_stm)
-    else:
-        print(usage_stm, file=sys.stderr)
-    
+def print_usage(is_error):
+    print(usage_stm, file=sys.stderr) if is_error else print(usage_stm)
     exit(isError)
 
 
