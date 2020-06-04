@@ -44,7 +44,7 @@ Options:
   -c DEV_LIST path to a text file containing the names of devices along with
                 the devices' MAC addresses; each device is on its own line,
                 with each line having the format: "[MAC_ADDR] [DEVICE]"
-                (Default = aux/devices_uk.txt)
+                (Default = aux/devices_us.txt)
   -a IP_ADDR  IP address of the device used to create the date in IN_DIR
   -s HOSTS    path to a file produced by TShark extracting hosts from
                 IN_DIR

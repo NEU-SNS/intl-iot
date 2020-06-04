@@ -9,11 +9,11 @@ Before starting, go to https://dev.maxmind.com/geoip/geoip2/geolite2/ to create 
 
 Usage: `python3 analyze.py -i IN_DIR {-m MAC_ADDR | -d DEV} [OPTION]... [-g PLOT -p PROTO [GRAPH_OPTION]...]...`
 
-Example: `python3 analyze.py -i iot-data/uk/echodot/voice/ -d echodot -o output.csv -n 4`
+Example: `python3 analyze.py -i iot-data/us/echodot/voice/ -d echodot -o output.csv -n 4`
 
 Example: `python3 analyze.py -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -f figout/ -g StackPlot,LinePlot -p eth.eth,eth.eth`
 
-Example: `python3 analyze.py -i iot-data/uk/echodot/ -d echodot -g BarPlot,BarHPlot -p eth.eth,eth.eth -l ,Country -r ,addrPcktNum`
+Example: `python3 analyze.py -i iot-data/us/echodot/ -d echodot -g BarPlot,BarHPlot -p eth.eth,eth.eth -l ,Country -r ,addrPcktNum`
 
 ### Input
 
@@ -27,7 +27,7 @@ There are required arguments as well as several optional arguments which one can
 
 `-d DEV` - The name of the device used to generate the data in `IN_DIR`. **Option required if `MAC_ADDR` not specified.**
 
-`-c DEV_LIST` - The path to a text file containing the names of devices along with the devices' MAC addresses. Each device is on its own line, with each line having the format: `[MAC_ADDR] [DEVICE]`. Default is `aux/devices_uk.txt`.
+`-c DEV_LIST` - The path to a text file containing the names of devices along with the devices' MAC addresses. Each device is on its own line, with each line having the format: `[MAC_ADDR] [DEVICE]`. Default is `aux/devices_us.txt`.
 
 `-a IP_ADDR` - IP address of the device used to create the date in `IN_DIR`.
 
@@ -69,7 +69,7 @@ Required options:
 - The `-i` option is required. This is the path to a directory containing input pcap files to be processed.
 - The MAC address of the device whose traffic is recorded in the pcap files is also needed. Inputting the MAC address can be done in two ways:
   - Input the MAC address directly using the `-m` option.
-  - Input the device name in the `-d` option, and input the file name to a list of devices using the `-c` option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`. An example file is `aux/devices_uk.txt`.
+  - Input the device name in the `-d` option, and input the file name to a list of devices using the `-c` option. The list of devices is a text file with a different device on a new line. Each line follows the format: `[MAC address] [Device name]` Ex. `90:71:92:8a:f5:e4 appletv`. An example file is `aux/devices_us.txt`.
 
 All other options are optional.
 

@@ -143,7 +143,7 @@ def main():
     parser.add_argument("-i", dest="in_dir", default="")
     parser.add_argument("-m", dest="mac_addr", default="")
     parser.add_argument("-d", dest="dev", default="")
-    parser.add_argument("-c", dest="dev_list", default=DEST_DIR+"/aux/devices_uk.txt")
+    parser.add_argument("-c", dest="dev_list", default=DEST_DIR+"/aux/devices_us.txt")
     parser.add_argument("-a", dest="ip_addr")
     parser.add_argument("-s", dest="hosts_file")
     parser.add_argument("-b", dest="lab", default="")
@@ -234,7 +234,7 @@ def main():
             errors = True
             print(c.INVAL_MAC % args.mac_addr, file=sys.stderr)
 
-    if valid_device_list:
+    if (args.mac_addr != "" or args.dev != "") and valid_device_list:
         devices = Device.Devices(args.dev_list)
         if args.mac_addr == "" and not no_mac_device:
             if not devices.deviceInList(args.dev):
