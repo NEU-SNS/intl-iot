@@ -94,12 +94,9 @@ For more information, see the README.""".format(prog_name=path)
 
 
 #isError is either 0 or 1
-def print_usage(isError):
-    if isError == 0:
-        print(usage_stm)
-    else:
-        print(usage_stm, file=sys.stderr)
-    exit(isError)
+def print_usage(is_error):
+    print(usage_stm, file=sys.stderr) if is_error else print(usage_stm)
+    exit(is_error)
 
 
 def main():
