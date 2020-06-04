@@ -132,7 +132,7 @@ def main():
     [print_usage(0) for arg in sys.argv if arg in ["-h", "--help"]]
 
     print("Performing destination analysis...")
-    print("Running %s..." % PATH)
+    print("Running %s..." % c.PATH)
 
     #Check that GeoLite2 databases and aux scripts exist and have proper permissions
     check_files(GEO_DIR, [GEO_DB_CITY, GEO_DB_COUNTRY], True)
@@ -166,7 +166,8 @@ def main():
     if args.plots is not None:
         for val in args.plots.split(","):
             plot = {"plt": val.strip().lower()}
-            plots.append(plot)
+            if plot["plt"] != "":
+                plots.append(plot)
 
     headings = ["prot", "ip_loc", "ip_attr"]
     plot_len = len(plots)
