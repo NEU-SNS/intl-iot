@@ -39,6 +39,7 @@ sudo apt-get install libpcap-dev libpq-dev
 sudo apt-get install python3-dev
 sudo apt-get install python3.6-tk
 sudo apt-get install gcc
+sudo apt-get install tshark
 
 virtualenv -p python3.6 env
 source env/bin/activate

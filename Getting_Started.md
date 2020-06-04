@@ -11,7 +11,7 @@ A good operating system to use is Linux. Specifically, this guide was written us
 1) Clone the Git Repo: `git clone https://github.com/NEU-SNS/intl-iot`
 2) Create a Python 3.6 environment to run the scripts:
 ```
-sudo apt-get install virtualenv libpcap-dev libpq-dev python3-dev python3.6-tk gcc
+sudo apt-get install virtualenv libpcap-dev libpq-dev python3-dev python3.6-tk gcc tshark
 virtualenv -p python3.6 env
 source env/bin/activate
 ```
