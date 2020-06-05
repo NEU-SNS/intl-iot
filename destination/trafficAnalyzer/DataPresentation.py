@@ -1,5 +1,6 @@
 import os
 import csv
+import gc
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,41 +18,41 @@ class PlotManager(object):
         for graph in self.graphs:
             print(graph)
 
-    def generatePlot(self, pcap_file, fig_dir, geo_db_city, geo_db_country):
-        plt.figure(figsize=(15, 15))
-        plt.title(pcap_file)
+    def generatePlot(self, pid, pcap_file, fig_dir, geo_db_city, geo_db_country):
+        fig = plt.figure(figsize=(15, 15))
+        fig.suptitle(pcap_file)
 
         for plot in self.graphs:
-            plt.subplot(len(self.graphs), 1, self.subPlotCounter)
+            ax = fig.add_subplot(len(self.graphs), 1, self.subPlotCounter)
             if plot["plt"] == "stackplot":
-                plt.xlabel("Packet TS (sec)")
-                plt.ylabel("Total Packet Size (bytes)")
-                self.generateStackPlot(plot)
+                ax.set_xlabel("Packet TS (sec)")
+                ax.set_ylabel("Total Packet Size (bytes)")
+                self.generateStackPlot(plot, ax)
             elif plot["plt"] in ["lineplot", "scatterplot", "barplot"]:
-                plt.xlabel("Packet TS (sec)")
-                plt.ylabel("Packet Size (bytes)")
+                ax.set_xlabel("Packet TS (sec)")
+                ax.set_ylabel("Packet Size (bytes)")
                 class_name = ""
                 if plot["plt"] == "lineplot":
                     class_name = "LinePlot"
                 elif plot["plt"] == "scatterplot":
                     class_name = "ScatterPlot"
-                elif plot["plt"] == "barhplot":
-                    class_name == "BarHPlot"
+                elif plot["plt"] == "barplot":
+                    class_name = "BarPlot"
 
-                self.generateLinePlot(plot, class_name)
+                self.generateLinePlot(plot, ax, class_name)
             elif plot["plt"] in ["pieplot", "barhplot"]:
                 if plot["ip_attr"] == "" or plot["ip_attr"] == "addrpcktsize":
-                    plt.xlabel("Packet Size (bytes)")
+                    ax.set_xlabel("Packet Size (bytes)")
                 else:
-                    plt.xlabel("Number Packets")
-                plt.ylabel("IP Address")
+                    ax.set_xlabel("Number Packets")
+                ax.set_ylabel("IP Address")
                 class_name = ""
                 if plot["plt"] == "pieplot":
                     class_name = "PiePlot"
                 elif plot["plt"] == "barhplot":
                     class_name = "BarHPlot"
 
-                self.generatePiePlot(plot, class_name, geo_db_city, geo_db_country)
+                self.generatePiePlot(plot, ax, class_name, geo_db_city, geo_db_country)
 
             self.subPlotCounter += 1 
    
@@ -59,26 +60,29 @@ class PlotManager(object):
             os.system('mkdir -pv %s' % fig_dir)
 
         graph_path = os.path.join(fig_dir, self.sanitiseFileName(pcap_file))
-        plt.savefig(graph_path)
-        print("Plot successfully saved to \"%s\"" % graph_path)
+        fig.savefig(graph_path, dpi=72)
+        print("  P%s: Plot successfully saved to \"%s\"" % (pid, graph_path))
         #plt.show()
+        fig.clf()
+        plt.close()
+        gc.collect()
 
-    def generateStackPlot(self, options):
-        self.sp = StackPlot(self.stats, plt)
+    def generateStackPlot(self, options, ax):
+        self.sp = StackPlot(self.stats, ax)
         for protocol in [options["prot_snd"], options["prot_rcv"]]:
             self.sp.addDataToStack(protocol, "packetSize", protocol)
 
         self.sp.plotFig()
 
-    def generateLinePlot(self, options, class_name):
-        self.lp = globals()[class_name](self.stats, plt)
+    def generateLinePlot(self, options, ax, class_name):
+        self.lp = globals()[class_name](self.stats, ax)
         for protocol in [options["prot_snd"], options["prot_rcv"]]:
             self.lp.addLine(protocol, "packetTS", "packetSize", protocol)
 
         self.lp.plotFig()
 
-    def generatePiePlot(self, options, class_name, geo_db_city, geo_db_country):
-        self.pp = globals()[class_name](self.stats, plt, self.ipMap, geo_db_city, geo_db_country, class_name)
+    def generatePiePlot(self, options, ax, class_name, geo_db_city, geo_db_country):
+        self.pp = globals()[class_name](self.stats, ax, self.ipMap, geo_db_city, geo_db_country, class_name)
         for protocol in [options["prot_snd"], options["prot_rcv"]]:
             self.pp.splitIPBy(protocol, options["ip_loc"], options["ip_attr"])
  
@@ -92,9 +96,9 @@ class PlotManager(object):
 
 
 class DataPresentation(object):
-    def __init__(self, stats, plot):
+    def __init__(self, stats, ax):
         self.stats = stats
-        self.plot = plot
+        self.ax = ax
     
         self.sm = Stats.StatsMerge()
         self.x = []
@@ -141,8 +145,8 @@ class DataPresentation(object):
 
 
 class StackPlot(DataPresentation):
-    def __init__(self, stats, plot):
-        super().__init__(stats, plot) 
+    def __init__(self, stats, ax):
+        super().__init__(stats, ax) 
 
     def addDataToStack(self, layer, y_field, label, x_field = "packetTS"):
         self.labels.append(label)
@@ -163,8 +167,8 @@ class StackPlot(DataPresentation):
         if cum_sum:
             self.y = self.sm.cumSumList(self.y)
     
-        self.plot.stackplot(self.x, *self.y, labels=self.labels)
-        self.plot.legend(loc='upper left')
+        self.ax.stackplot(self.x, *self.y, labels=self.labels)
+        self.ax.legend(loc='upper left')
 
 
 class LinePlot(DataPresentation):
@@ -191,28 +195,28 @@ class LinePlot(DataPresentation):
 
     def plotFig(self):
         for i, _ in enumerate(self.x):
-            self.plot.plot(self.x[i], self.y[i], label=self.labels[i])
+            self.ax.plot(self.x[i], self.y[i], label=self.labels[i])
 
-        self.plot.legend()
+        self.ax.legend()
 
 
 class ScatterPlot(LinePlot):
     def plotFig(self):
         for i, _ in enumerate(self.x):
-            self.plot.scatter(self.x[i], self.y[i], s=1, label=self.labels[i])
+            self.ax.scatter(self.x[i], self.y[i], s=1, label=self.labels[i])
 
-        self.plot.legend()
+        self.ax.legend()
 
 
 class BarPlot(LinePlot):
     def plotFig(self):
         for i, _ in enumerate(self.x):
-            self.plot.bar(self.x[i], self.y[i])
+            self.ax.bar(self.x[i], self.y[i])
 
 
 class PiePlot(DataPresentation):
-    def __init__(self, stats, plot, ipMapping, geoDbCity, geoDbCountry, class_name):
-        super().__init__(stats, plot)
+    def __init__(self, stats, ax, ipMapping, geoDbCity, geoDbCountry, class_name):
+        super().__init__(stats, ax)
         self.ipResolver = IP.IPResolver(ipMapping, geoDbCity, geoDbCountry)
         self.class_name = class_name
 
@@ -235,7 +239,7 @@ class PiePlot(DataPresentation):
             print("  %s: There is no traffic for protocol \"%s\"." % (self.class_name, layer))
 
     def plotFig(self):
-        self.plot.pie(list(self.dataDict.values()), labels=list(dict.keys(self.dataDict)),
+        self.ax.pie(list(self.dataDict.values()), labels=list(dict.keys(self.dataDict)),
                       autopct='%1.1f%%')
 
 
@@ -267,18 +271,18 @@ class BarHPlot(PiePlot):
         for layer, data in self.dataDict.items():
             keys, vals = list(zip(*sorted(data.items())))
             #print(keys, vals, left)
-            plots.append(self.plot.barh(keys, vals, left=left))
+            plots.append(self.ax.barh(keys, vals, left=left))
             left = [l1 + l2 for l1, l2 in zip(left, list(vals))]
             labels.append(layer)
     
-        self.plot.legend(plots, labels)
+        self.ax.legend(plots, labels)
 
 
 class FreqPlot(DataPresentation):
-    def __init__(self, stats, plot):
+    def __init__(self, stats, ax):
         self.fft = None
         self.freq = None
-        super().__init__(stats, plot)
+        super().__init__(stats, ax)
 
     def analyzeFreq(self, layer, y_field):
         data = getattr(self.stats[layer], y_field)
@@ -287,7 +291,7 @@ class FreqPlot(DataPresentation):
         self.freq = np.fft.fftfreq(len(data))
    
     def plotFig(self):
-        self.plot.plot(self.freq, self.fft.real, self.freq, self.fft.imag)
+        self.ax.plot(self.freq, self.fft.real, self.freq, self.fft.imag)
 
 
 class DomainExport(DataPresentation):

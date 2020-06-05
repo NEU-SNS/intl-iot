@@ -5,6 +5,7 @@ import os
 import re
 import sys
 from multiprocessing import Process
+import gc
 
 import pyshark
 
@@ -162,7 +163,7 @@ def main():
 
     #Parse Arguments
     args = parser.parse_args()
-
+    
     if args.plots is not None:
         for val in args.plots.split(","):
             plot = {"plt": val.strip().lower()}
@@ -312,15 +313,15 @@ def main():
                 if index >= num_proc:
                     index = 0
 
+    gc.collect()
+
     print("Analyzing input pcap files...\n")
     # run analysis with num_proc processes
     procs = []
-    pid = 0
-    for files in raw_files:
+    for pid, files in enumerate(raw_files):
         p = Process(target=run, args=(pid, files))
         procs.append(p)
         p.start()
-        pid += 1
 
     for p in procs:
         p.join()
@@ -331,11 +332,13 @@ def main():
 
 
 def run(pid, pcap_files):
-    for f in pcap_files:
-        perform_analysis(pid, f)
+    files_len = len(pcap_files)
+    for idx, f in enumerate(pcap_files):
+        perform_analysis(pid, idx, files_len, f)
+        gc.collect()
 
 
-def perform_analysis(pid, pcap_file):
+def perform_analysis(pid, idx, files_len, pcap_file):
     if not pcap_file.endswith(".pcap"):
         print(c.WRONG_EXT % ("An input file", "pcap (.pcap)", pcap_file), file=sys.stderr)
         return
@@ -344,7 +347,7 @@ def perform_analysis(pid, pcap_file):
         print(c.INVAL % ("Input pcap", pcap_file, "file"), file=sys.stderr)
         return
 
-    print("Proc %s: Processing pcap file \"%s\"..." % (pid, pcap_file))
+    print("P%s (%s/%s): Processing pcap file \"%s\"..." % (pid, idx, files_len, pcap_file))
     cap = pyshark.FileCapture(pcap_file, use_json = True)
     Utils.sysUsage("PCAP file loading")
 
@@ -361,15 +364,16 @@ def perform_analysis(pid, pcap_file):
     node_id = Node.NodeId(args.mac_addr, args.ip_addr)
     node_stats = Node.NodeStats(node_id, base_ts, devices)
 
-    print("Proc %s: Processing packets..." % pid)
+    print("  P%s: Processing packets..." % pid)
     for packet in cap:
         node_stats.processPacket(packet)
 
     cap.close()
+    del cap
 
     Utils.sysUsage("Packets processed")
 
-    print("Proc %s: Mapping IP to host..." % pid)
+    print("  P%s: Mapping IP to host..." % pid)
     ip_map = IP.IPMapping()
     ip_map.extractFromFile(pcap_file)
     ip_map.loadOrgMapping(IP_TO_ORG)
@@ -377,22 +381,22 @@ def perform_analysis(pid, pcap_file):
 
     Utils.sysUsage("TShark hosts loaded")
 
-    print("Proc %s: Generating CSV output..." % pid)
+    print("  P%s: Generating CSV output..." % pid)
     de = DataPresentation.DomainExport(node_stats.stats.stats, ip_map, GEO_DB_CITY, GEO_DB_COUNTRY)
     de.loadDiffIPFor("eth") if args.find_diff else de.loadIPFor("eth")
     de.loadDomains(args.dev, args.lab, args.experiment, args.network, pcap_file, str(base_ts))
     de.exportDataRows(args.out_file)
 
-    print("Proc %s: Analyzed data from \"%s\" successfully written to \"%s\""
+    print("  P%s: Analyzed data from \"%s\" successfully written to \"%s\""
           % (pid, pcap_file, args.out_file))
 
     Utils.sysUsage("Data exported")
 
     if len(plots) != 0:
-        print("Proc %s: Generating plots..." % pid)
+        print("  P%s: Generating plots..." % pid)
         pm = DataPresentation.PlotManager(node_stats.stats.stats, plots)
         pm.ipMap = ip_map
-        pm.generatePlot(pcap_file, args.fig_dir, GEO_DB_CITY, GEO_DB_COUNTRY)
+        pm.generatePlot(pid, pcap_file, args.fig_dir, GEO_DB_CITY, GEO_DB_COUNTRY)
 
         Utils.sysUsage("Plots generated")
 
