@@ -45,6 +45,8 @@ Destination Analysis analyzes where the network traffic in input pcap files has 
 
 ### Run Pipeline
 
+### Very Basic Usage
+
 Very basic usage: `python3 analyze.py -i IN_DIR -m MAC_ADDR [-g PLOTS -p PROTOS]`
 
 For input, very basic usage requires the path to a directory with pcap files (`-i`) and a MAC address of the device from which the data in the input pcap files were generated from (`-m`).
@@ -56,10 +58,14 @@ For output, a CSV called `results.csv` is generated. Information about the conte
 Example 1: `python3 analyze.py -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -g StackPlot -p eth.eth`
    - Output: A CSV file named `results.csv` is produced in the current directory (`destination/`), and a stack plot is produced in a newly created `figures/` directory.
 
+### Generate More Than One Plot
+
 More than one plot can be created by specifying multiple plot names, separated by commas. A corresponding protocol (`-p`) must be specified (again, comma delimited) for each plot specified in the `-g` option.
 
 Example 2: `python3 analyze.py -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -g StackPlot,LinePlot -p eth.eth,eth.eth`
    - Output: A CSV file named `results.csv` is produced in the current directory, and an image in the `figures/` directory is produced containing a stack plot and a line plot.
+
+### Input Device and Device List Instead of a MAC
 
 As an alternative to the MAC address, a device (`-d`) and a device list (`-c`) can be given. The device list is a text file containing the MAC addresses of several devices. Each line is formatted as follows: `[MAC] [Device name]`. An example device list is `aux/devices_uk.txt`.
 
