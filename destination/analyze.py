@@ -335,7 +335,7 @@ def main():
 def run(pid, pcap_files):
     files_len = len(pcap_files)
     for idx, f in enumerate(pcap_files):
-        perform_analysis(pid, idx, files_len, f)
+        perform_analysis(pid, idx + 1, files_len, f)
         gc.collect()
 
 
