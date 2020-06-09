@@ -39,7 +39,6 @@ class NodeStats(object):
     def proc_pckt(self, packet, dir1, dir2):
         addr = NodeId()
         addr.extractFromPacket(packet, dir1, self.devices)
-        #print("rcv", addr)
         packet.addr = addr
         for layer in packet.layers:
             if layer.layer_name not in self.layersToProcess:

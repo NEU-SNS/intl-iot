@@ -6,6 +6,7 @@ import re
 import sys
 from multiprocessing import Process
 import gc
+import traceback
 
 import pyshark
 
@@ -348,9 +349,10 @@ def perform_analysis(pid, idx, files_len, pcap_file):
         return
 
     print("P%s (%s/%s): Processing pcap file \"%s\"..." % (pid, idx, files_len, pcap_file))
-    cap = pyshark.FileCapture(pcap_file, use_json = True)
+    cap = pyshark.FileCapture(pcap_file, use_json=True)
     Utils.sysUsage("PCAP file loading")
-
+    #cap.set_debug()
+    cap.close()
     base_ts = 0
     try:
         if args.no_time_shift:
@@ -365,10 +367,14 @@ def perform_analysis(pid, idx, files_len, pcap_file):
     node_stats = Node.NodeStats(node_id, base_ts, devices)
 
     print("  P%s: Processing packets..." % pid)
-    for packet in cap:
-        node_stats.processPacket(packet)
+    try:
+        for packet in cap:
+            node_stats.processPacket(packet)
+    except:
+        print(pcap_file)
+        traceback.print_exc()
+        return
 
-    cap.close()
     del cap
 
     Utils.sysUsage("Packets processed")
