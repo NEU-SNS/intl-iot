@@ -370,7 +370,7 @@ def perform_analysis(pid, idx, files_len, pcap_file):
         for packet in cap:
             node_stats.processPacket(packet)
     except:
-        print(" %sP%s: Error: There is something wrong with \"%s\". Skipping file.%s"
+        print("  %sP%s: Error: There is something wrong with \"%s\". Skipping file.%s"
               % (RED, pid, pcap_file, END), file=sys.stderr)
         return
 

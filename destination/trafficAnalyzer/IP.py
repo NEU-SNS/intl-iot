@@ -314,7 +314,7 @@ class IPMapping(object):
 
                 self.addHostIP(host.strip(), ip)
             except ValueError:
-                print("Error: No hosts found in %s" % file_name)
+                print("  Error: No hosts found in %s" % file_name)
 
     def addHostIP(self, host, ip):
         if ip not in self.ip:
