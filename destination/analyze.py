@@ -6,7 +6,6 @@ import re
 import sys
 from multiprocessing import Process
 import gc
-import traceback
 
 import pyshark
 
@@ -371,8 +370,8 @@ def perform_analysis(pid, idx, files_len, pcap_file):
         for packet in cap:
             node_stats.processPacket(packet)
     except:
-        print(pcap_file)
-        traceback.print_exc()
+        print(" %sP%s: Error: There is something wrong with \"%s\". Skipping file.%s"
+              % (RED, pid, pcap_file, END), file=sys.stderr)
         return
 
     del cap
