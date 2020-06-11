@@ -2,6 +2,8 @@
 
 Destination Analysis determines the organizations that traffic travels to and the amount of traffic going to and from those organizations.
 
+For step-by-step instructions on getting started, see the [Getting Started](../Getting_Started.md) document.
+
 ## Setup
 Before starting, go to https://dev.maxmind.com/geoip/geoip2/geolite2/ to create a free account to download the GeoLite2 databases. In this directory, create a new directory called `geoipdb/` and move `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` into this new directory.
 
@@ -51,7 +53,7 @@ There are required arguments as well as several optional arguments which one can
 
 `-h` - Print the usage statement and exit.
 
-#### Graph options
+#### Graph Options
 
 To produce more than one graph, use commas to separate arguments. See the [notes](#Notes) section for examples.
 

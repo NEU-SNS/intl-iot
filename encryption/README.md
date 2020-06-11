@@ -2,6 +2,8 @@
 
 Encryption Analysis calculates the entropies of data flows and classifies each flow as either encrypted, text, media, or unknown.
 
+For step-by-step instructions on getting started, see the [Getting Started](../Getting_Started.md) document.
+
 ## Setup
 
 The system should have **wireshark/tshark** installed; the versions that our machines have tested to be working are **v2.6.7**, **v2.6.8**, and **v2.6.10**.

@@ -2,6 +2,8 @@
 
 Content Analysis generates a machine learning model that can predict the device activity given the network traffic of that device.
 
+For step-by-step instructions on getting started, see the [Getting Started](../getting_started.md) document.
+
 ## Setup
 
 Python 3.6 is required to run this code. Please follow the steps under General Setup in [Getting_Started.md](../Getting_Started.md#general-setup) before continuing.
@@ -29,7 +31,7 @@ Example: `./model.sh -i exp_list.txt -rn -v yi-camera -l knn -p yi_camera_sample
 
 There are several options which one can choose from. The default options have been set to run with the provided dataset.
 
-#### Options:
+#### Options
 
 `-i EXP_LIST` - The path to the text file containing filepaths to input pcap files to generate the models. To see the format of this text file, please see the `exp_list.txt` section of [model_details.md](model_details.md#exp_listtxt). Default is `exp_list.txt`.
 

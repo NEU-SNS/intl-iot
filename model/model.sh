@@ -218,6 +218,7 @@ run_pipeline() {
 ### Begin Model Pipeline ###
 
 begin=`date '+%A %d %B %Y %T %Z %s'`
+#Thursday 11 June 2020 11:37:02 EDT
 
 red="\e[31;1m"
 end="\e[0m"
@@ -246,7 +247,6 @@ echo "Running $0..."
 
 echo "Pipeline start time: $(echo $begin | cut -d ' ' -f -6)"
 begin_time=$(echo $begin | cut -d ' ' -f 7-)
-
 
 check_args_files
 
@@ -299,7 +299,7 @@ then
     sec=$(($sec-($min*60)))
 fi
 
-echo "Time to run pipeline: $hrs hours $min minutes $sec seconds"
+echo "Elapsed time: $hrs hours $min minutes $sec seconds"
 
 echo -e "\nContent analysis finished."
 

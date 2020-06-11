@@ -6,6 +6,7 @@ import re
 import sys
 from multiprocessing import Process
 import gc
+import time
 
 import pyshark
 
@@ -130,10 +131,11 @@ def check_files(direc, files, is_geo):
 def main():
     global args, plots, devices
 
-    [print_usage(0) for arg in sys.argv if arg in ["-h", "--help"]]
+    start_time = time.time()
 
     print("Performing destination analysis...")
     print("Running %s..." % c.PATH)
+    print("Start time: %s\n" % time.strftime("%A %d %B %Y %H:%M:%S %Z", time.localtime(start_time)))
 
     #Check that GeoLite2 databases and aux scripts exist and have proper permissions
     check_files(GEO_DIR, [GEO_DB_CITY, GEO_DB_COUNTRY], True)
@@ -163,6 +165,9 @@ def main():
 
     #Parse Arguments
     args = parser.parse_args()
+
+    if args.help:
+        print_usage(0)
     
     if args.plots is not None:
         for val in args.plots.split(","):
@@ -315,7 +320,7 @@ def main():
 
     gc.collect()
 
-    print("Analyzing input pcap files...\n")
+    print("Analyzing input pcap files...")
     # run analysis with num_proc processes
     procs = []
     for pid, files in enumerate(raw_files):
@@ -327,6 +332,21 @@ def main():
         p.join()
 
     DataPresentation.DomainExport.sort_csv(args.out_file)
+
+    end_time = time.time()
+    print("\nEnd time: %s" % time.strftime("%A %d %B %Y %H:%M:%S %Z", time.localtime(end_time)))
+
+    #Calculate elapsed time
+    sec = round(end_time - start_time)
+    hrs = sec // 3600
+    if hrs != 0:
+        sec = sec - hrs * 3600
+
+    minute = sec // 60
+    if minute != 0:
+        sec = sec - minute * 60
+
+    print("Elapsed time: %s hours %s minutes %s seconds" % (hrs, minute, sec))
 
     print("\nDestintaion analysis finished.")
 
