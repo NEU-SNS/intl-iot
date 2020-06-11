@@ -16,12 +16,12 @@ Each subdirectory shows samples for processing pcap files for destination, encry
 
 - `destination/` - Code for Section 4 Destination Analysis - analyze the destinations that traffic is being sent to and received from.
 - `encryption/` - Code for Section 5 Encryption Analysis - analyze whether traffic is encrypted or unencrypted.
-- `Getting_Started.md` - A step-by-step tutorial to get started analyzing data using each of the three analyses.
-- `lab.png` - A photo of the IoT Lab at Northeastern University.
-- `LICENSE.md` - The license for this software.
 - `model/` - Code for Section 6 Content Analysis - create machine learning models to predict the state of an IoT device using its network traffic.
 - `moniotr/` - Code to automate experiments.
+- `Getting_Started.md` - A step-by-step tutorial to get started analyzing data using each of the three analyses.
+- `LICENSE.md` - The license for this software.
 - `README.md` - This file. Contains an overview of the software.
+- `lab.png` - A photo of the IoT Lab at Northeastern University.
 
 ## Datasets
 
