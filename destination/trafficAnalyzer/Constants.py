@@ -32,7 +32,7 @@ the organizations that traffic in the pcap files have been to and the number of
 packets that were sent and received from those organizations. The program also
 can produce plots of this data.
 
-Example: python3 {prog_name} -i iot-data/us/appletv/local_menu/ -m 7c:61:66:10:46:18 -g StackPlot,LinePlot -p eth.eth,eth.eth
+Example: python3 {prog_name} -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -g StackPlot,LinePlot -p eth.eth,eth.eth
 
 Options:
   -i IN_DIR   path to the directory containing input pcap files to be analyzed;
@@ -45,9 +45,11 @@ Options:
                 the devices' MAC addresses; each device is on its own line,
                 with each line having the format: "[MAC_ADDR] [DEVICE]"
                 (Default = aux/devices_us.txt)
-  -a IP_ADDR  IP address of the device used to create the date in IN_DIR
-  -s HOSTS    path to a file produced by TShark extracting hosts from
-                IN_DIR
+  -a IP_ADDR  IP address of the device used to create the data in IN_DIR
+  -s HOSTS    path to a directory containing text (.txt) files produced by TShark
+                extracting hosts from IN_DIR; host filenames should match input
+                pcap but with .txt extension; generate host file using "tshark -r
+                [input_pcap] -q -z hosts > HOSTS/[input_pcap].txt"
   -b LAB      name of the lab that the pcap files in IN_DIR were generated in
   -e EXP      name of the experiment that the pcap files in IN_DIR are a part of
   -w NETWORK  name of the network
@@ -70,19 +72,20 @@ Graph options:
   -l IPLOCS comma-delimited list of methods to map an IP address to a host
               or country for each plot; choose from Country, Host, IP,
               RipeCountry, or TSharkHost; RipeCountry currently does not
-              function properly
+              function properly (Default = IP)
   -r IPATTS comma-delimited list of IP packet attributes to display for each
-              plot; choose from either addrPcktSize or addrPcktNum
+              plot; choose from either addrPcktSize or addrPcktNum (Default =
+              addrPcktSize)
 
 Notes:
  - The position of an argument in the comma-delimited lists in the graph options
      determine which graph that argument will affect. For example, in the
-     command: "-g LinePlot,StackPlot -p eth.eth,eth.eth -l ,IP
-     -r addrPcktNum", two plots are produced:
-     1) a line plot displaying the number of packets with Ethernet as both the
-          send and receive protocols
-     2) a horizontal bar plot with Ethernet as both the send and receive
-          protocols using the IP method to map the IP addresses to a host
+     command: "-g LinePlot,StackPlot -p eth.eth,eth.eth -l ,IP -r addrPcktNum",
+     two plots are produced:
+     1) a line plot (-g) displaying the number of packets (-r) with Ethernet as
+          both the send and receive protocols (-p)
+     2) a horizontal bar plot (-g) with Ethernet as both the send and receive
+          protocols (-p) using the IP method to map the IP addresses to a host (-l)
  - Only pie plots and horizontal bar plots are affected by the -l and -r options
  - All plots specified will be placed in one PNG file named:
      "[sanitized_IN_DIR_path]_[plot_names].png"
@@ -95,12 +98,12 @@ DOWNLOAD_DB = RED + "Please go to the README for instructions to download the da
               "    in the correct directory." + END
 NO_PERM = BEG + ": Error: The %s \"%s\" does not have %s permission." + END
 PIE_STM = "***PiePlot currently does not function properly. Please choose a different plot.\n"\
-          "   Currently available plots: StackPlot, LinePlot, ScatterPlot, BarPlot, BarHPlot"
+          "   Currently available plots: BarHPlot, BarPlot, LinePlot, ScatterPlot, StackPlot"
 RP_STM = "***RipeCountry currently does not function properly. Please choose a different IP"\
          " mapping method.\n   Currently available methods: Country, Host, IP, TSharkHost"
 
 INVAL = BEG + ": Error: %s \"%s\" is not a %s." + END
-WRONG_EXT = BEG + ": Error: %s must be a %s file.\n    Received \"%s\"" + END
+WRONG_EXT = BEG + ": Error: %s must be a %s file. Received \"%s\"" + END
 
 NO_IN_DIR = BEG + ": Error: Pcap input directory (-i) required." + END
 NO_MAC = BEG + ": Error: Either the MAC address (-m) or device name (-d) must be specified." + END
@@ -108,15 +111,15 @@ INVAL_MAC = BEG + ": Error: Invalid MAC address \"%s\". Valid format xx:xx:xx:xx
 NO_DEV = BEG + ": Error: The device \"%s\" does not exist in the device list \"%s\"." + END
 NON_POS = BEG + ": Error: The number of processes must be a positive integer. Received \"%s\"." + END
 
-INVAL_PLT = BEG + ": Error: \"%s\" is not a valid plot type.\n    Must be either \"StackPlot\","\
-            "\"LinePlot\", \"ScatterPlot\", \"BarPlot\", \"PiePlot\", or \"BarHPlot\"." + END
+INVAL_PLT = BEG + ": Error: \"%s\" is not a valid plot type.\n    Must be either \"BarHPlot\","\
+            " \"BarPlot\", \"LinePlot\", \"PiePlot\", \"ScatterPlot\", or \"StackPlot\"." + END
 NO_PROT = BEG + ": Error: A protocol (-p) must be specified for \"%s\"." + END
 INVAL_PROT = BEG + ": Error: Invalid set of protocols \"%s\" for \"%s\".\n"\
              "    Protocols should be in the form \"[send].[receive]\"." + END
 INVAL_LOC = BEG + ": Error: Invalid IP locator method \"%s\" for \"%s\".\n    Must be"\
-            " either \"Country\", \"Host\", \"TSharkHost\", \"RipeCountry\", or \"IP\"." + END
+            " either \"Country\", \"Host\", \"IP\", \"TSharkHost\", or \"RipeCountry\"." + END
 INVAL_ATTR = BEG + ": Error: Invalid IP Attribute \"%s\" for \"%s\".\n"\
-             "    Must be either \"addrPcktSize\" or \"addrPcktNum\"." + END
+             "    Must be either \"addrPcktNum\" or \"addrPcktSize\"." + END
 
 NO_PCKT = BEG + ": Error The file \"%s\" does not contain any packets." + END
 

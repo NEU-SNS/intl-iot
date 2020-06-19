@@ -274,47 +274,40 @@ class IPMapping(object):
         self.host = {}
         self.ip = {}
 
-    #tshark -z option seems to return a CNAME but the A Record is wanted
-    #However, the A Record is in the details of running "tshark -r [pcap_file]"
+    #tshark -z option seems to return a CNAME but is sometimes not the correct one
+    #However, the correct host is in the details of running "tshark -r [pcap_file]"
     #This method searches for the line containing the host name and checks
     #accuracy by making sure that the ip is also in that line
-    def get_a_record(self, details, host, ip):
+    def get_correct_host(self, details, host, ip):
         for line in details.splitlines(): #loop through lines in detailed tshark output
             if host in line and ip in line:
-                words = line.split()
-                for idx, word in enumerate(words): #loop through words in line
+                line = line.split()
+                for idx, word in enumerate(line): #loop through words in line
                     if word == "A":
-                        return words[idx + 1]
+                        return line[idx + 1]
 
         return None
 
-    def extractFromFile(self, file_name):
-        details = ""
-        if file_name.endswith(".pcap"):
-            p1 = subprocess.Popen(["tshark", "-r", file_name, "-q", "-z", "hosts"],
-                                  stdout=subprocess.PIPE)
-            p2 = subprocess.Popen(["awk", "NF && $1!~/^#/"], stdin=p1.stdout, stdout=subprocess.PIPE,
-                                  universal_newlines=True)
-            hosts = str(p2.communicate()[0][0:-1]).split("\n")
-
-            #run "tshark -r [pcap_file]" - gets the details which contain A Record
-            details = str(os.popen("tshark -r %s" % file_name).read())
+    def extractFromFile(self, pcap_file, host_file=""):
+        #run "tshark -r [pcap_file]" - gets the details which contain correct host
+        details = str(os.popen("tshark -r %s" % pcap_file).read())
+        if host_file == "" or not os.path.isfile(host_file) or not os.access(host_file, os.R_OK):
+            hosts = str(os.popen("tshark -r %s -q -z hosts" % pcap_file).read()).split("\n")
         else:
-            with open(file_name) as f:
+            with open(host_file) as f:
                 hosts = f.readlines()
-
-        for hostLine in hosts:
+                
+        for host_line in hosts:
             try:
-                ip, host = hostLine.split("\t")
-                #Get the A Record host name
-                if file_name.endswith(".pcap"):
-                    tmp_host = self.get_a_record(details, host, ip)
-                    if tmp_host is not None:
-                        host = tmp_host
+                ip, host = host_line.strip().split("\t")
+                #Get the correct host name
+                tmp_host = self.get_correct_host(details, host, ip)
+                if tmp_host is not None:
+                    host = tmp_host
 
                 self.addHostIP(host.strip(), ip)
             except ValueError:
-                print("  Error: No hosts found in %s" % file_name)
+                pass 
 
     def addHostIP(self, host, ip):
         if ip not in self.ip:

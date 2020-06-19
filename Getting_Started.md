@@ -1,10 +1,12 @@
 # Getting Started
-This document provides a step-by-step starting guide to perform analysis with the code accompanying the paper "Information Exposure From Consumer IoT Devices." This document is contains four sections: General Setup, Destination Analysis, Encryption Analysis, and Content Analysis. **In-depth information can be found in the READMEs for each pipeline.**
+
+This document provides a step-by-step starting guide to perform analysis with the code accompanying the paper "Information Exposure From Consumer IoT Devices." This document contains four sections: General Setup, Destination Analysis, Encryption Analysis, and Content Analysis. **In-depth information can be found in the READMEs for each pipeline.**
 
 ## General Setup
+
 ### System Setup
 
-A good operating system to use is Linux. Specifically, this guide was written using Ubuntu 18.04. The code might work using a Mac terminal, but there could be issues, such as with TShark. The code has not been tested on Windows. Users on a Windows or Mac platform are encouraged to install an Ubuntu virtual machine. [VirtualBox](https://www.virtualbox.org/) and [VMWare](https://www.vmware.com/) are two popular virtual machine softwares. If you are using a virtual machine, please make sure to allocate enough disk space. If you are using the dataset from this study, it is recommended that 30 GB be allocated.
+A good operating system to use is Linux. Specifically, this guide was written using Ubuntu 18.04. The code might work using a Mac terminal, but there could be issues, such as with TShark. The code has not been tested on Windows. Users on a Windows or Mac platform are strongly encouraged to use an Ubuntu virtual machine. [VirtualBox](https://www.virtualbox.org/) and [VMWare](https://www.vmware.com/) are two popular virtual machine softwares. If you are using a virtual machine, please make sure to allocate enough disk space. If you are using the dataset from this study, it is recommended that 30 GB be allocated.
 
 ### Environment Setup
 
@@ -51,12 +53,10 @@ Very basic usage: `python3 analyze.py -i IN_DIR -m MAC_ADDR [-g PLOTS -p PROTOS]
 
 For input, very basic usage requires the path to a directory with pcap files (`-i`) and a MAC address of the device from which the data in the input pcap files were generated from (`-m`).
 
-Optionally, the `-g` option produces a graph(s), and the `-p` option determine the protocols to analyze (more info below). Each graph required two protocols to be specified, which are separated by a period (`.`). The first protocol is the send protocol, and the second protocol is the receive protocol.
-
-For output, a CSV called `results.csv` is generated. Information about the contents of this file can be found in the [Destination README](./destination/README.md).
+Optionally, the `-g` option produces a graph(s), and the `-p` option determine the protocols to analyze (more info below). Each graph requires two protocols, which are separated by a period (`.`). The first protocol is the send protocol, and the second protocol is the receive protocol.
 
 Example 1: `python3 analyze.py -i iot-data/us/appletv/ -m 7c:61:66:10:46:18 -g StackPlot -p eth.eth`
-   - Output: A CSV file named `results.csv` is produced in the current directory (`destination/`), and a stack plot is produced in a newly created `figures/` directory.
+   - Output: A CSV file named `results.csv` is produced in the current directory (`destination/`), and a stack plot is produced in a newly created `figures/` directory. In-depth information about the CSV file can be found in the [Destination README](./destination/README.md).
 
 ### Generate More Than One Plot
 

@@ -94,29 +94,42 @@ devices = None
 
 #isError is either 0 or 1
 def print_usage(is_error):
-    print(c.USAGE_STM, file=sys.stderr) if is_error else print(c.USAGE_STM)
+    #print(c.USAGE_STM, file=sys.stderr) if is_error else print(c.USAGE_STM)
     exit(is_error)
 
 
-def check_files(direc, files, is_geo):
+def check_dir(direc, description=""):
     errors = False
+    if direc == "":
+        direc = "."
     if not os.path.isdir(direc):
         errors = True
-        print(c.MISSING % (direc, "directory"), file=sys.stderr)
+        if description == "":
+            print(c.MISSING % (direc, "directory"), file=sys.stderr)
+        else:
+            print(c.INVAL % (description, direc, "directory"), file=sys.stderr)
     else:
         if not os.access(direc, os.R_OK):
             errors = True
             print(c.NO_PERM % ("directory", direc, "read"), file=sys.stderr)
-        if not os.access(GEO_DIR, os.X_OK):
+        if not os.access(direc, os.X_OK):
             errors = True
             print(c.NO_PERM % ("directory", direc, "execute"), file=sys.stderr)
 
+    return errors
+
+
+def check_files(direc, files, is_geo, description=""):
+    errors = check_dir(direc)
     if not errors:
         missing_file = False
         for f in files:
             if not os.path.isfile(f):
                 missing_file = errors = True
-                print(c.MISSING % (f, "file"), file=sys.stderr)
+                if description == "":
+                    print(c.MISSING % (f, "file"), file=sys.stderr)
+                else:
+                    print(c.INVAL % (description, f, "file"), file=sys.stderr)
             elif not os.access(f, os.R_OK):
                 errors = True
                 print(c.NO_PERM % ("file", f, "read"), file=sys.stderr)
@@ -124,8 +137,7 @@ def check_files(direc, files, is_geo):
         if missing_file and is_geo:
             print(c.DOWNLOAD_DB, file=sys.stderr)
 
-    if errors:
-        exit(1)
+    return errors
 
 
 def main():
@@ -148,14 +160,14 @@ def main():
     parser.add_argument("-d", dest="dev", default="")
     parser.add_argument("-c", dest="dev_list", default=DEST_DIR+"/aux/devices_us.txt")
     parser.add_argument("-a", dest="ip_addr")
-    parser.add_argument("-s", dest="hosts_file")
+    parser.add_argument("-s", dest="hosts_dir", default="")
     parser.add_argument("-b", dest="lab", default="")
     parser.add_argument("-e", dest="experiment", default="")
     parser.add_argument("-w", dest="network", default="")
     parser.add_argument("-t", dest="no_time_shift", action="store_true", default=False)
     parser.add_argument("-y", dest="find_diff", action="store_true", default=False)
-    parser.add_argument("-f", dest="fig_dir", default=DEST_DIR+"/figures")
-    parser.add_argument("-o", dest="out_file", default=DEST_DIR+"/results.csv")
+    parser.add_argument("-f", dest="fig_dir", default="figures")
+    parser.add_argument("-o", dest="out_file", default="results.csv")
     parser.add_argument("-n", dest="num_proc", default="1")
     parser.add_argument("-g", dest="plots")
     parser.add_argument("-p", dest="protocols", default="")
@@ -168,12 +180,10 @@ def main():
 
     if args.help:
         print_usage(0)
-    
+   
+    #Parse plot options
     if args.plots is not None:
-        for val in args.plots.split(","):
-            plot = {"plt": val.strip().lower()}
-            if plot["plt"] != "":
-                plots.append(plot)
+        plots = [{"plt": val.strip().lower()} for val in args.plots.split(",")]
 
     headings = ["prot", "ip_loc", "ip_attr"]
     plot_len = len(plots)
@@ -194,54 +204,44 @@ def main():
             print(c.RP_STM, file=sys.stderr)
             exit(1)
 
-    if args.mac_addr != "":
-        args.mac_addr = Device.Device.normaliseMac(args.mac_addr)
+    #Error checking command line args and files
+    #Check that GeoLite2 databases and aux scripts exist and have proper permissions
+    errors = (check_files(GEO_DIR, [GEO_DB_CITY, GEO_DB_COUNTRY], True) or 
+              check_files(AUX_DIR, [IP_TO_ORG, IP_TO_COUNTRY], False))
 
-    #Error checking command line args
-    errors = False
+    #check -i input dir
     if args.in_dir == "":
         errors = True 
         print(c.NO_IN_DIR, file=sys.stderr)
-    elif not os.path.isdir(args.in_dir):
+    elif check_dir(args.in_dir, "Input pcap directory"):
         errors = True
-        print(c.INVAL % ("Input pcap directory", args.in_dir, "directory"), file=sys.stderr)
-    else:
-        if not os.access(args.in_dir, os.R_OK):
-            errors = True
-            print(c.NO_PERM % ("directory", option.in_dir, "read"), file=sys.stderr)
-        if not os.access(args.in_dir, os.X_OK):
-            errors = True
-            print(c.NO_PERM % ("directory", args.in_dir, "execute"), file=sys.stderr)
 
-    #if args.hosts_file == "":
-    #    args.hosts_file = args.inputFile
-
-    if not args.out_file.endswith(".csv"):
-        errors = True
-        print(c.WRONG_EXT % ("Output file", "CSV (.csv)", args.out_file), file=sys.stderr)
-
+    #check -m mac address
     no_mac_device = False
     valid_device_list = True
     if args.mac_addr == "" and args.dev == "":
         no_mac_devce = errors = True
         print(c.NO_MAC, file=sys.stderr)
-    elif args.mac_addr == "":
-        if not args.dev_list.endswith(".txt"):
-            errors = True
-            print(c.WRONG_EXT % ("Device list", "text (.txt)", args.dev_list), file=sys.stderr)
-            valid_device_list = False
-        elif not os.path.isfile(args.dev_list):
-            errors = True
-            print(c.INVAL % ("Device list file", args.dev_list, "file"), file=sys.stderr)
-            valid_device_list = False
-    else:
-        args.mac_addr = args.mac_addr.lower()
+    elif args.mac_addr != "":
+        args.mac_addr = Device.Device.normaliseMac(args.mac_addr).lower()
         if not re.match("([0-9a-f]{2}[:]){5}[0-9a-f]{2}$", args.mac_addr):
             errors = True
             print(c.INVAL_MAC % args.mac_addr, file=sys.stderr)
 
-    if (args.mac_addr != "" or args.dev != "") and valid_device_list:
+    #check -c device list
+    if not args.dev_list.endswith(".txt"):
+        errors = True
+        print(c.WRONG_EXT % ("Device list", "text (.txt)", args.dev_list), file=sys.stderr)
+        valid_device_list = False
+    elif check_files(os.path.dirname(args.dev_list), [args.dev_list], False, "Device list"):
+        errors = True
+        valid_device_list = False
+
+    if valid_device_list:
         devices = Device.Devices(args.dev_list)
+
+    #check -d device
+    if (args.mac_addr != "" or args.dev != "") and valid_device_list:
         if args.mac_addr == "" and not no_mac_device:
             if not devices.deviceInList(args.dev):
                 errors = True
@@ -249,6 +249,16 @@ def main():
             else:
                 args.mac_addr = devices.getDeviceMac(args.dev)
 
+    #check -s hosts dir
+    if args.hosts_dir != "" and check_dir(args.hosts_dir, "Hosts directory"):
+        errors = True
+
+    #check -o output csv
+    if not args.out_file.endswith(".csv"):
+        errors = True
+        print(c.WRONG_EXT % ("Output file", "CSV (.csv)", args.out_file), file=sys.stderr)
+
+    #check -n number processes
     bad_proc = True
     num_proc = 1
     try:
@@ -262,7 +272,7 @@ def main():
         errors = True
         print(c.NON_POS % args.num_proc, file=sys.stderr)
 
-    plot_types = ["stackplot", "lineplot", "scatterplot", "barplot", "pieplot", "barhplot"]
+    plot_types = ["", "stackplot", "lineplot", "scatterplot", "barplot", "pieplot", "barhplot"]
     ip_loc_types = ["country", "host", "tsharkhost", "ripecountry", "ip"]
     ip_attr_types = ["addrpcktsize", "addrpcktnum"]
     for plt in plots:
@@ -272,13 +282,15 @@ def main():
         if plt["ip_attr"] == "":
             plt["ip_attr"] = "addrpcktsize"
 
+        #check -g plot type
         if plt["plt"] not in plot_types:
             errors = True
             print(c.INVAL_PLT % plt["plt"], file=sys.stderr)
-        else:
+        elif plt["plt"] != "":
+            #check -p protocol
             if plt["prot"] == "":
                 errors = True
-                print(c.NO_PROT % plt["prot"], file=sys.stderr)
+                print(c.NO_PROT % plt["plt"], file=sys.stderr)
             else:
                 try:
                     plt["prot_snd"], plt["prot_rcv"] = plt["prot"].split(".")
@@ -289,10 +301,12 @@ def main():
                     errors = True
                     print(c.INVAL_PROT % (plt["prot"], plt["plt"]), file=sys.stderr)
 
+            #check -l ip location
             if plt["ip_loc"] not in ip_loc_types:
                 errors = True
                 print(c.INVAL_LOC % (plt["ip_loc"], plt["plt"]), file=sys.stderr)
     
+            #check -r ip attribute
             if plt["ip_attr"] not in ip_attr_types:
                 errors = True
                 print(c.INVAL_ATTR % (plt["ip_attr"], plt["plt"]), file=sys.stderr)
@@ -312,7 +326,7 @@ def main():
     # Split the pcap files into num_proc groups
     for root, dirs, files in os.walk(args.in_dir):
         for filename in files:
-            if filename.endswith("pcap") and not filename.startswith("."):
+            if filename.endswith(".pcap") and not filename.startswith("."):
                 raw_files[index].append(root + "/" + filename)
                 index += 1
                 if index >= num_proc:
@@ -347,7 +361,6 @@ def main():
         sec = sec - minute * 60
 
     print("Elapsed time: %s hours %s minutes %s seconds" % (hrs, minute, sec))
-
     print("\nDestintaion analysis finished.")
 
 
@@ -359,18 +372,9 @@ def run(pid, pcap_files):
 
 
 def perform_analysis(pid, idx, files_len, pcap_file):
-    if not pcap_file.endswith(".pcap"):
-        print(c.WRONG_EXT % ("An input file", "pcap (.pcap)", pcap_file), file=sys.stderr)
-        return
-
-    if not os.path.isfile(pcap_file):
-        print(c.INVAL % ("Input pcap", pcap_file, "file"), file=sys.stderr)
-        return
-
     print("P%s (%s/%s): Processing pcap file \"%s\"..." % (pid, idx, files_len, pcap_file))
     cap = pyshark.FileCapture(pcap_file, use_json=True)
     Utils.sysUsage("PCAP file loading")
-    #cap.set_debug()
     cap.close()
     base_ts = 0
     try:
@@ -400,7 +404,12 @@ def perform_analysis(pid, idx, files_len, pcap_file):
 
     print("  P%s: Mapping IP to host..." % pid)
     ip_map = IP.IPMapping()
-    ip_map.extractFromFile(pcap_file)
+    if args.hosts_dir != "":
+        host_file = args.hosts_dir + "/" + os.path.basename(pcap_file)[:-4] + "txt"
+        ip_map.extractFromFile(pcap_file, host_file)
+    else:
+        ip_map.extractFromFile(pcap_file)
+
     ip_map.loadOrgMapping(IP_TO_ORG)
     ip_map.loadCountryMapping(IP_TO_COUNTRY)
 
